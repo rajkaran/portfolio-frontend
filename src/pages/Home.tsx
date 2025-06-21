@@ -6,6 +6,7 @@ export default function Home() {
         <Container
             disableGutters
             maxWidth={false}
+            sx={{ width: '100%' }}
         >
             <ChatBox />
         </Container>

@@ -7,13 +7,15 @@ import ReportIcon from '@mui/icons-material/Report';
 import Paper from '@mui/material/Paper';
 import Tooltip from '@mui/material/Tooltip';
 import ArrowDropDownCircleIcon from '@mui/icons-material/ArrowDropDownCircle';
+import type { User } from '../types/user.types';
 
 type Props = {
     question: string;
     answer: string;
+    user: User;
 };
 
-export default function ChatMessage({ question, answer }: Props) {
+export default function ChatMessage({ question, answer, user }: Props) {
     const [expanded, setExpanded] = useState(false);
     const [isOverflowing, setIsOverflowing] = useState(false);
     const contentRef = useRef<HTMLDivElement>(null);
@@ -39,7 +41,7 @@ export default function ChatMessage({ question, answer }: Props) {
                     }}
                 >
                     <Typography variant="subtitle2" color="textSecondary" mb={0.5}>
-                        You
+                        {user.displayName}
                     </Typography>
                     <Typography variant="body1" sx={{ whiteSpace: 'pre-line' }}>
                         {question}
@@ -64,7 +66,7 @@ export default function ChatMessage({ question, answer }: Props) {
                         mb={0.5}
                         sx={{ px: 2, pt: 1.5 }}
                     >
-                        AI
+                        Anzo
                     </Typography>
 
                     {/* Collapse button on top if expanded */}
@@ -127,7 +129,7 @@ export default function ChatMessage({ question, answer }: Props) {
             </Box>
 
             {/* Feedback buttons below the answer */}
-            {/* <Box display="flex" justifyContent="flex-end" mt={1} pr={{ xs: '5%', md: '20%' }}>
+            <Box display="flex" justifyContent="flex-end" mt={1} pr={{ xs: '5%', md: '20%' }}>
                 <Stack direction="row" spacing={1}>
                     <IconButton size="small" aria-label="Like">
                         <ThumbUpIcon fontSize="small" />
@@ -151,7 +153,7 @@ export default function ChatMessage({ question, answer }: Props) {
                         </Tooltip>
                     )}
                 </Stack>
-            </Box> */}
+            </Box>
         </Box>
     );
 }

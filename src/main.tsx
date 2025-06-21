@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
 import { CssBaseline, ThemeProvider, createTheme } from '@mui/material';
+import { SnackbarProvider } from './components/SnackbarProvider';
 
 const theme = createTheme({
   palette: {
@@ -15,7 +16,9 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <App />
+      <SnackbarProvider>
+        <App />
+      </SnackbarProvider>
     </ThemeProvider>
   </StrictMode>,
 )
