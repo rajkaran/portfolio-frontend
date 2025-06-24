@@ -1,8 +1,8 @@
 export interface User {
     email: string;
     displayName: string;
-    quota: number;
     promptsLeft: number;
+    otpSent?: boolean;
     createDatetime: string;
     id: string;
 }

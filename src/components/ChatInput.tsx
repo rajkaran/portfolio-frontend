@@ -8,13 +8,16 @@ import Paper from '@mui/material/Paper';
 type Props = {
     onSend: (text: string) => void;
     disabled?: boolean;
+    promptsLeft: number;
 };
 
-export default function ChatInput({ onSend, disabled }: Props) {
+export default function ChatInput({ onSend, disabled, promptsLeft }: Props) {
     const [text, setText] = useState('');
 
     const trimmed = text.trim();
     const hasContent = trimmed.length > 0;
+    const maxNPromptLength = 400;
+    const charactersLeft = maxNPromptLength - trimmed.length;
 
     const handleSend = () => {
         if (hasContent) {
@@ -48,6 +51,7 @@ export default function ChatInput({ onSend, disabled }: Props) {
                         value={text}
                         onChange={(e) => setText(e.target.value)}
                         onKeyDown={handleKeyDown}
+                        maxLength={maxNPromptLength}
                         disabled={disabled}
                         style={{
                             width: '100%',
@@ -62,27 +66,46 @@ export default function ChatInput({ onSend, disabled }: Props) {
                         }}
                     />
 
-                    <Box display="flex" justifyContent="flex-end" mt={1}>
-                        {disabled ? (
-                            <CircularProgress size={28} />
-                        ) : (
-                            <IconButton
-                                onClick={handleSend}
-                                disabled={!hasContent}
-                                sx={{
-                                    backgroundColor: hasContent ? '#000' : '#e0e0e0',
-                                    color: hasContent ? '#fff' : '#888',
-                                    '&:hover': {
-                                        backgroundColor: hasContent ? '#333' : '#d0d0d0',
-                                    },
-                                    borderRadius: '12px',
-                                    transition: 'background-color 0.2s',
-                                }}
-                            >
-                                {hasContent ? <ArrowUpwardIcon /> : <SendIcon />}
-                            </IconButton>
-                        )}
+                    <Box display="flex" alignItems="center" mt={1}>
+                        {/* Left: Prompts left */}
+                        <Box flex={1}>
+                            <span style={{ fontSize: '0.875rem', color: '#888' }}>
+                                {promptsLeft} questions left
+                            </span>
+                        </Box>
+
+                        {/* Center: Characters left */}
+                        <Box flex={1} display="flex" justifyContent="center">
+                            <span style={{ fontSize: '0.875rem', color: '#888' }}>
+                                {charactersLeft} characters left
+                            </span>
+                        </Box>
+
+                        {/* Right aligned: Send button + progress spinner */}
+                        <Box flex={1} display="flex" justifyContent="flex-end">
+                            {disabled ? (
+                                <CircularProgress size={28} />
+                            ) : (
+                                <IconButton
+                                    onClick={handleSend}
+                                    disabled={!hasContent}
+                                    sx={{
+                                        backgroundColor: hasContent ? '#000' : '#e0e0e0',
+                                        color: hasContent ? '#fff' : '#888',
+                                        '&:hover': {
+                                            backgroundColor: hasContent ? '#333' : '#d0d0d0',
+                                        },
+                                        borderRadius: '12px',
+                                        transition: 'background-color 0.2s',
+                                    }}
+                                >
+                                    {hasContent ? <ArrowUpwardIcon /> : <SendIcon />}
+                                </IconButton>
+                            )}
+                        </Box>
                     </Box>
+
+
                 </Paper>
             </Box>
         </Box>

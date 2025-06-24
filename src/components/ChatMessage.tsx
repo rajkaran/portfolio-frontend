@@ -8,16 +8,22 @@ import Paper from '@mui/material/Paper';
 import Tooltip from '@mui/material/Tooltip';
 import ArrowDropDownCircleIcon from '@mui/icons-material/ArrowDropDownCircle';
 import type { User } from '../types/user.types';
+import ReportPromptModal from './ReportPromptModal';
 
 type Props = {
+    id: string;
     question: string;
     answer: string;
+    action: 'like' | 'dislike' | 'report' | null;
     user: User;
 };
 
-export default function ChatMessage({ question, answer, user }: Props) {
+export default function ChatMessage({ id, question, answer, action, user }: Props) {
     const [expanded, setExpanded] = useState(false);
     const [isOverflowing, setIsOverflowing] = useState(false);
+    const [userAction, setUserAction] = useState<string | null>(action);
+    const [showReportModal, setShowReportModal] = useState(false);
+
     const contentRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -25,6 +31,12 @@ export default function ChatMessage({ question, answer, user }: Props) {
             setIsOverflowing(contentRef.current.scrollHeight > 300);
         }
     }, [answer]);
+
+    const handleAction = async (action: 'like' | 'dislike' | 'report') => {
+        setShowReportModal(false);
+        setUserAction(action);
+        // also update the original prompot pair object        
+    };
 
     return (
         <Box mb={4}>
@@ -60,13 +72,37 @@ export default function ChatMessage({ question, answer, user }: Props) {
                         position: 'relative',
                     }}
                 >
+                    {userAction && (
+                        <Box
+                            sx={{
+                                position: 'absolute',
+                                top: -14,
+                                right: -14,
+                                width: 32,
+                                height: 32,
+                                backgroundColor: '#fff',
+                                borderRadius: '50%',
+                                border: '2px solid #ccc',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                zIndex: 2,
+                                boxSizing: 'border-box',
+                            }}
+                        >
+                            {userAction === 'like' && <ThumbUpIcon fontSize="small" color="primary" />}
+                            {userAction === 'dislike' && <ThumbDownIcon fontSize="small" color="error" />}
+                            {userAction === 'report' && <ReportIcon fontSize="small" color="warning" />}
+                        </Box>
+                    )}
+
                     <Typography
                         variant="subtitle2"
                         color="textSecondary"
                         mb={0.5}
                         sx={{ px: 2, pt: 1.5 }}
                     >
-                        Anzo
+                        Anzo {id} {user.id} {action}
                     </Typography>
 
                     {/* Collapse button on top if expanded */}
@@ -131,13 +167,13 @@ export default function ChatMessage({ question, answer, user }: Props) {
             {/* Feedback buttons below the answer */}
             <Box display="flex" justifyContent="flex-end" mt={1} pr={{ xs: '5%', md: '20%' }}>
                 <Stack direction="row" spacing={1}>
-                    <IconButton size="small" aria-label="Like">
+                    <IconButton size="small" aria-label="Like" onClick={() => handleAction('like')}>
                         <ThumbUpIcon fontSize="small" />
                     </IconButton>
-                    <IconButton size="small" aria-label="Dislike">
+                    <IconButton size="small" aria-label="Dislike" onClick={() => handleAction('dislike')}>
                         <ThumbDownIcon fontSize="small" />
                     </IconButton>
-                    <IconButton size="small" aria-label="Report">
+                    <IconButton size="small" aria-label="Report" onClick={() => setShowReportModal(true)}>
                         <ReportIcon fontSize="small" />
                     </IconButton>
 
@@ -154,6 +190,13 @@ export default function ChatMessage({ question, answer, user }: Props) {
                     )}
                 </Stack>
             </Box>
+
+            <ReportPromptModal
+                open={showReportModal}
+                promptId={id}
+                onClose={() => setShowReportModal(false)}
+                onActionSuccess={handleAction}
+            />
         </Box>
     );
 }
