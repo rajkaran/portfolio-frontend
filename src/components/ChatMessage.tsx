@@ -35,7 +35,6 @@ export default function ChatMessage({ id, question, answer, action, user }: Prop
     const handleAction = async (action: 'like' | 'dislike' | 'report') => {
         setShowReportModal(false);
         setUserAction(action);
-        // also update the original prompot pair object        
     };
 
     return (
@@ -102,7 +101,7 @@ export default function ChatMessage({ id, question, answer, action, user }: Prop
                         mb={0.5}
                         sx={{ px: 2, pt: 1.5 }}
                     >
-                        Anzo {id} {user.id} {action}
+                        Anzo
                     </Typography>
 
                     {/* Collapse button on top if expanded */}

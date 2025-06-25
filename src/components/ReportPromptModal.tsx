@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Modal, Box, Typography, Button, TextareaAutosize } from '@mui/material';
 import { useSnackbar } from './SnackbarProvider';
+import axios from 'axios';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -35,21 +36,18 @@ export default function ReportPromptModal({ open, promptId, onClose, onActionSuc
     }, [open]);
 
     const handleReportAction = async () => {
-        console.log('Report reason:', reportReason);
         try {
             setLoading(true);
-            const response = await fetch(`${BACKEND_URL}/prompts/action/${promptId}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'report', reason: reportReason }),
-            });
 
-            console.log('Response:', response);
-            onActionSuccess('report');
+            const response = await axios.patch(
+                `${BACKEND_URL}/prompts/action/${promptId}`,
+                { action: 'report', reason: reportReason }
+            );
+
+            onActionSuccess(response.data);
             onClose();
         } catch (error) {
-            console.error('Registration error:', error);
-            showSnackbar('Registration failed. Please try again later or contact admin.', {
+            showSnackbar('Failed to save the action. Please try again later or contact admin.', {
                 severity: 'error',
                 showCloseButton: true,
                 duration: 5000,
