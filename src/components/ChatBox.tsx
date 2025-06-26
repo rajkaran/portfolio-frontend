@@ -128,7 +128,7 @@ export default function ChatBox() {
         <Box
             display="flex"
             justifyContent="center"
-            width="100vw"
+            width="100%"
             px={{ xs: 2, sm: 3, md: 6 }}
             py={4}
         >

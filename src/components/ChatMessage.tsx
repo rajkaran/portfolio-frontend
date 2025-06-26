@@ -9,6 +9,8 @@ import Tooltip from '@mui/material/Tooltip';
 import ArrowDropDownCircleIcon from '@mui/icons-material/ArrowDropDownCircle';
 import type { User } from '../types/user.types';
 import ReportPromptModal from './ReportPromptModal';
+import axios from 'axios';
+import { useSnackbar } from './SnackbarProvider';
 
 type Props = {
     id: string;
@@ -18,11 +20,14 @@ type Props = {
     user: User;
 };
 
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
+
 export default function ChatMessage({ id, question, answer, action, user }: Props) {
     const [expanded, setExpanded] = useState(false);
     const [isOverflowing, setIsOverflowing] = useState(false);
     const [userAction, setUserAction] = useState<string | null>(action);
     const [showReportModal, setShowReportModal] = useState(false);
+    const { showSnackbar } = useSnackbar();
 
     const contentRef = useRef<HTMLDivElement>(null);
 
@@ -32,7 +37,24 @@ export default function ChatMessage({ id, question, answer, action, user }: Prop
         }
     }, [answer]);
 
-    const handleAction = async (action: 'like' | 'dislike' | 'report') => {
+    const handleBasicActions = async (action: 'like' | 'dislike' | 'report') => {
+        try {
+            const response = await axios.patch(
+                `${BACKEND_URL}/prompts/action/${id}`,
+                { action: action }
+            );
+
+            setUserAction(response.data);
+        } catch (error) {
+            showSnackbar('Failed to save the action. Please try again later or contact admin.', {
+                severity: 'error',
+                showCloseButton: true,
+                duration: 5000,
+            });
+        }
+    };
+
+    const handleReportAction = async (action: 'like' | 'dislike' | 'report') => {
         setShowReportModal(false);
         setUserAction(action);
     };
@@ -166,10 +188,10 @@ export default function ChatMessage({ id, question, answer, action, user }: Prop
             {/* Feedback buttons below the answer */}
             <Box display="flex" justifyContent="flex-end" mt={1} pr={{ xs: '5%', md: '20%' }}>
                 <Stack direction="row" spacing={1}>
-                    <IconButton size="small" aria-label="Like" onClick={() => handleAction('like')}>
+                    <IconButton size="small" aria-label="Like" onClick={() => handleBasicActions('like')}>
                         <ThumbUpIcon fontSize="small" />
                     </IconButton>
-                    <IconButton size="small" aria-label="Dislike" onClick={() => handleAction('dislike')}>
+                    <IconButton size="small" aria-label="Dislike" onClick={() => handleBasicActions('dislike')}>
                         <ThumbDownIcon fontSize="small" />
                     </IconButton>
                     <IconButton size="small" aria-label="Report" onClick={() => setShowReportModal(true)}>
@@ -194,7 +216,7 @@ export default function ChatMessage({ id, question, answer, action, user }: Prop
                 open={showReportModal}
                 promptId={id}
                 onClose={() => setShowReportModal(false)}
-                onActionSuccess={handleAction}
+                onActionSuccess={handleReportAction}
             />
         </Box>
     );

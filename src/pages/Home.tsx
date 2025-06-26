@@ -1,5 +1,7 @@
 import { Container } from '@mui/material';
 import ChatBox from '../components/ChatBox';
+import Navbar from '../components/Navbar';
+import IntroSection from '../components/IntroSection';
 
 export default function Home() {
     return (
@@ -8,6 +10,8 @@ export default function Home() {
             maxWidth={false}
             sx={{ width: '100%' }}
         >
+            <Navbar />
+            <IntroSection />
             <ChatBox />
         </Container>
     );
