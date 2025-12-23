@@ -7,9 +7,9 @@ import {
     Button,
 } from '@mui/material';
 import axios from 'axios';
-import type { User } from '../types/user.types';
-import { useSnackbar } from './SnackbarProvider';
-import { validateEmail } from '../utils/validation';
+import type { User } from '../../types/portfolio/user.types';
+import { useSnackbar } from '../shared/SnackbarProvider';
+import { validateEmail } from '../../utils/validation';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 

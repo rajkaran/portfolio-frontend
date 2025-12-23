@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Modal, Box, Typography, Button, TextareaAutosize } from '@mui/material';
-import { useSnackbar } from './SnackbarProvider';
+import { useSnackbar } from '../shared/SnackbarProvider';
 import axios from 'axios';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
