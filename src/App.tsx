@@ -2,16 +2,20 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Home from './pages/Home';
 import Dashboard from './pages/stock/Dashboard';
 import GroceryList from './pages/grocery/GroceryList';
+import Setting from './pages/stock/Setting';
 
 function App() {
   return (
     <Router>
       <Routes>
         <Route path="/" element={<Home />} />
+
         <Route path="/stock" element={<Dashboard />} />
+        <Route path="/stock/setting" element={<Setting />} />
+
         <Route path="/grocery" element={<GroceryList />} />
+
         <Route path="*" element={<Navigate to="/" replace />} />
-        {/* Add future pages here */}
       </Routes>
     </Router>
   );
