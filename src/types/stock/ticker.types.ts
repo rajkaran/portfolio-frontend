@@ -3,6 +3,14 @@ export type StockClass = 'dividend' | 'trade' | 'longTerm';
 
 export type Category = 'core' | 'watch' | 'once' | 'avoid';
 
+export type TickerBase = {
+  id: string;
+  symbol: string;
+  name: string;
+  market: Market;
+  stockClasses: StockClass[];
+};
+
 export type TickerSnapshot = {
   id: string;
   symbol: string; // e.g. "ENB.TO"

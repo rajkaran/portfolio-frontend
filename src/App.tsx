@@ -3,6 +3,7 @@ import Home from './pages/Home';
 import Dashboard from './pages/stock/Dashboard';
 import GroceryList from './pages/grocery/GroceryList';
 import Setting from './pages/stock/Setting';
+import Ticker from './pages/stock/Ticker';
 
 function App() {
   return (
@@ -12,6 +13,7 @@ function App() {
 
         <Route path="/stock" element={<Dashboard />} />
         <Route path="/stock/setting" element={<Setting />} />
+        <Route path="/stock/ticker" element={<Ticker />} />
 
         <Route path="/grocery" element={<GroceryList />} />
 
