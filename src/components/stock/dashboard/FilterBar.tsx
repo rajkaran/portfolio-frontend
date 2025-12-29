@@ -15,35 +15,45 @@ export default function FilterBar({
   };
 
   return (
-    <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', alignItems: 'center' }}>
-      <FormControl size="small" sx={{ minWidth: 160 }}>
+    <Box
+      sx={{
+        display: 'grid',
+        gap: 1.5,
+        alignItems: 'center',
+        // Mobile: 2 columns, Desktop: 4 columns (search fills last column)
+        gridTemplateColumns: {
+          xs: '1fr 1fr',
+          md: '160px 160px 220px 1fr',
+        },
+      }}
+    >
+      <FormControl size="small" sx={{ minWidth: 0 }}>
         <InputLabel>Market</InputLabel>
         <Select
           label="Market"
           value={value.market}
-          onChange={(e) => set('market', e.target.value as Market | 'all')}
+          onChange={(e) => set('market', e.target.value as Market | 'canada')}
         >
-          <MenuItem value="all">All</MenuItem>
           <MenuItem value="canada">Canada</MenuItem>
           <MenuItem value="usa">USA</MenuItem>
           <MenuItem value="india">India</MenuItem>
         </Select>
       </FormControl>
 
-      <FormControl size="small" sx={{ minWidth: 160 }}>
+      <FormControl size="small" sx={{ minWidth: 0 }}>
         <InputLabel>Class</InputLabel>
         <Select
           label="Class"
           value={value.stockClass}
-          onChange={(e) => set('stockClass', e.target.value as StockClass | 'all')}
+          onChange={(e) => set('stockClass', e.target.value as StockClass | 'trade')}
         >
-          <MenuItem value="all">All</MenuItem>
           <MenuItem value="dividend">Dividend</MenuItem>
           <MenuItem value="trade">Trade</MenuItem>
+          <MenuItem value="longTerm">Long Term</MenuItem>
         </Select>
       </FormControl>
 
-      <FormControl size="small" sx={{ minWidth: 220 }}>
+      <FormControl size="small" sx={{ minWidth: 0 }}>
         <InputLabel>Sort by</InputLabel>
         <Select
           label="Sort by"
@@ -62,7 +72,7 @@ export default function FilterBar({
         label="Search"
         value={value.search}
         onChange={(e) => set('search', e.target.value)}
-        sx={{ flex: 1, minWidth: 240 }}
+        sx={{ minWidth: 0 }}
       />
     </Box>
   );

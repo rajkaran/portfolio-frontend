@@ -196,7 +196,7 @@ export default function Dashboard() {
         Dashboard
       </Typography>
 
-      <Box sx={{ bgcolor: 'rgba(255,255,255,0.06)', p: 2, borderRadius: 2 }}>
+      <Box>
         <FilterBar value={filters} onChange={setFilters} />
       </Box>
 

@@ -1,5 +1,5 @@
 export type Market = 'canada' | 'usa' | 'india';
-export type StockClass = 'dividend' | 'trade';
+export type StockClass = 'dividend' | 'trade' | 'longTerm';
 
 export type Category = 'core' | 'watch' | 'once' | 'avoid';
 

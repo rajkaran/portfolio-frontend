@@ -3,15 +3,15 @@ import type { Market, StockClass, TickerSnapshot } from '../../types/stock/ticke
 export type SortBy = 'category' | 'mostTraded' | 'gainers' | 'closeToThresholds';
 
 export type StockFilters = {
-  market: Market | 'all';
-  stockClass: StockClass | 'all';
+  market: Market | 'canada';
+  stockClass: StockClass | 'trade';
   sortBy: SortBy;
   search: string;
 };
 
 export const defaultStockFilters: StockFilters = {
-  market: 'all',
-  stockClass: 'all',
+  market: 'canada',
+  stockClass: 'trade',
   sortBy: 'category',
   search: '',
 };
@@ -20,8 +20,8 @@ export function applyFilters(tickers: TickerSnapshot[], filters: StockFilters): 
   const search = filters.search.trim().toLowerCase();
 
   return tickers.filter((t) => {
-    if (filters.market !== 'all' && t.market !== filters.market) return false;
-    if (filters.stockClass !== 'all' && t.stockClass !== filters.stockClass) return false;
+    if (t.market !== filters.market) return false;
+    if (t.stockClass !== filters.stockClass) return false;
 
     if (search) {
       const hay = `${t.symbol} ${t.name}`.toLowerCase();
