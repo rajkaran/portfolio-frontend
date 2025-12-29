@@ -9,7 +9,7 @@ export default function TickerGrid({
   onTrade,
 }: {
   tickers: TickerSnapshot[];
-  onZoom: (id: string) => void;
+  onZoom: (id: string, anchorEl: HTMLElement | null) => void;
   onTrade: (id: string, side: 'buy' | 'sell') => void;
 }) {
   return (

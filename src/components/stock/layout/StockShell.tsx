@@ -37,27 +37,39 @@ export default function StockShell({
   console.log({ isSmall, rightOpen, showRightPanel });
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh', position: 'relative' }}>
+    <Box
+      sx={{
+        display: 'flex',
+        height: '100vh',
+        overflow: 'hidden',
+        position: 'relative',
+      }}
+    >
       {/* Left */}
       <Paper
         elevation={2}
         sx={{
           width: leftWidth,
-          transition: 'width 200ms ease',
+          height: '100vh',
           borderRadius: 0,
           overflow: 'hidden',
           flexShrink: 0,
+          transition: 'width 200ms ease',
         }}
       >
-        <LeftNavBar collapsed={collapsed} onToggleCollapse={() => setCollapsed((v) => !v)} />
+        {/* Left column scroll container */}
+        <Box sx={{ height: '100%', overflowY: 'auto' }}>
+          <LeftNavBar collapsed={collapsed} onToggleCollapse={() => setCollapsed((v) => !v)} />
+        </Box>
       </Paper>
 
       {/* Center */}
       <Box
         sx={{
           flex: 1,
+          height: '100vh',
+          overflowY: 'auto',
           p: 2,
-          overflow: 'auto',
         }}
       >
         {children}
@@ -69,8 +81,9 @@ export default function StockShell({
           elevation={2}
           sx={{
             width: rightWidth,
+            height: '100vh',
             borderRadius: 0,
-            overflow: 'auto',
+            overflowY: 'auto',
             flexShrink: 0,
           }}
         >
@@ -98,7 +111,7 @@ export default function StockShell({
               '&:hover': { bgcolor: 'rgba(255,255,255,1)' },
               boxShadow: '0 6px 18px rgba(0,0,0,0.25)',
             }}
-            aria-label={rightOpen ? 'Hide right panel' : 'Show right panel'}
+            aria-label="Open favorable stocks panel"
           >
             <ChevronLeftIcon />
           </IconButton>

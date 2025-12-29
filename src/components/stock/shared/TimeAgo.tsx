@@ -15,7 +15,16 @@ function formatTimeAgo(updatedAt: number): string {
 
 export default function TimeAgo({ updatedAt }: { updatedAt: number }) {
   return (
-    <Typography variant="caption" sx={{ opacity: 0.7 }}>
+    <Typography
+      variant="caption"
+      component="span"
+      sx={{
+        opacity: 0.7,
+        fontSize: '0.65rem',
+        lineHeight: '0.65rem', // match font size for tighter box
+        display: 'inline-block', // key: prevents extra line box height
+      }}
+    >
       Updated {formatTimeAgo(updatedAt)}
     </Typography>
   );

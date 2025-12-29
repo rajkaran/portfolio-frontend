@@ -1,6 +1,12 @@
-import { Box, Button, Card, CardContent, Chip, Stack, Typography } from '@mui/material';
+import { Box, Card, CardContent, IconButton, Stack, Typography } from '@mui/material';
+import ZoomInIcon from '@mui/icons-material/ZoomIn';
+import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
+import SellIcon from '@mui/icons-material/Sell';
+import { useRef } from 'react';
+
 import type { TickerSnapshot } from '../../../types/stock/ticker.types';
 import TimeAgo from '../shared/TimeAgo';
+import ThresholdMini from './ThresholdMini';
 
 export default function TickerCard({
   ticker,
@@ -8,73 +14,71 @@ export default function TickerCard({
   onTrade,
 }: {
   ticker: TickerSnapshot;
-  onZoom: (id: string) => void;
+  onZoom: (id: string, anchorEl: HTMLElement | null) => void;
   onTrade: (id: string, side: 'buy' | 'sell') => void;
 }) {
+  const cardRef = useRef<HTMLDivElement | null>(null);
+
   return (
-    <Card variant="outlined" sx={{ height: '100%' }}>
-      <CardContent>
-        <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
-          <Box>
-            <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-              {ticker.symbol}
-            </Typography>
-            <Typography variant="body2" sx={{ opacity: 0.8 }}>
-              {ticker.name}
-            </Typography>
-          </Box>
+    <Card ref={cardRef} variant="outlined" sx={{ height: '100%' }}>
+      <CardContent
+        sx={{
+          p: 0,            // 8px on all sides
+          '&:last-child': {
+            pb: 0.3,         // override MUI's extra bottom padding
+          },
+        }}
+      >
+        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mx: 1 }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+            {ticker.symbol}
+          </Typography>
 
-          <Chip size="small" label={ticker.category} />
+          <Stack direction="row" spacing={0.5}>
+            <IconButton
+              size="small"
+              onClick={() => onZoom(ticker.id, cardRef.current)}
+              aria-label="Zoom"
+            >
+              <ZoomInIcon fontSize="small" />
+            </IconButton>
+
+            <IconButton
+              size="small"
+              onClick={() => onTrade(ticker.id, 'buy')}
+              aria-label="Buy"
+            >
+              <ShoppingCartIcon fontSize="small" />
+            </IconButton>
+
+            <IconButton
+              size="small"
+              onClick={() => onTrade(ticker.id, 'sell')}
+              aria-label="Sell"
+            >
+              <SellIcon fontSize="small" />
+            </IconButton>
+          </Stack>
         </Stack>
 
-        <Stack direction="row" spacing={2} sx={{ mt: 1.5 }} alignItems="baseline">
-          <Typography variant="h6">${ticker.currentPrice.toFixed(2)}</Typography>
-          {typeof ticker.avgBookCost === 'number' ? (
-            <Typography variant="body2" sx={{ opacity: 0.75 }}>
-              Avg cost: ${ticker.avgBookCost.toFixed(2)}
-            </Typography>
-          ) : null}
-        </Stack>
+
 
         {/* Placeholder for your threshold-line visual */}
-        <Box
-          sx={{
-            mt: 1.5,
-            height: 88,
-            borderRadius: 1,
-            bgcolor: 'rgba(0,0,0,0.04)',
-            position: 'relative',
-            overflow: 'hidden',
-          }}
-        >
-          <Box
-            sx={{
-              position: 'absolute',
-              inset: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              opacity: 0.6,
-              fontSize: 12,
-            }}
-          >
-            Threshold lines area (next)
-          </Box>
+        <Box sx={{ mt: .5 }}>
+          <ThresholdMini
+            currentPrice={ticker.currentPrice}
+            thresholds={[
+              { key: 'thresholdGreen', value: ticker.thresholdGreen },
+              { key: 'thresholdCyan', value: ticker.thresholdCyan },
+              { key: 'thresholdOrange', value: ticker.thresholdOrange },
+              { key: 'thresholdRed', value: ticker.thresholdRed },
+            ]}
+            height={120}
+            onChangeThreshold={(key, value) => { console.log('change threshold', key, value) }}
+          />
         </Box>
 
-        <Stack direction="row" spacing={1} sx={{ mt: 1.5 }}>
-          <Button size="small" variant="outlined" onClick={() => onZoom(ticker.id)}>
-            Zoom
-          </Button>
-          <Button size="small" variant="contained" onClick={() => onTrade(ticker.id, 'buy')}>
-            Buy
-          </Button>
-          <Button size="small" color="warning" variant="contained" onClick={() => onTrade(ticker.id, 'sell')}>
-            Sell
-          </Button>
-        </Stack>
-
-        <Box sx={{ mt: 1.25 }}>
+        <Box sx={{ mx: 1, mt: 0.5, display: 'flex', justifyContent: 'flex-end' }}>
           <TimeAgo updatedAt={ticker.updateDatetime} />
         </Box>
       </CardContent>
