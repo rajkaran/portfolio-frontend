@@ -25,7 +25,7 @@ export default function TimeAgo({ updatedAt }: { updatedAt: number }) {
         display: 'inline-block', // key: prevents extra line box height
       }}
     >
-      Updated {formatTimeAgo(updatedAt)}
+      {formatTimeAgo(updatedAt)}
     </Typography>
   );
 }

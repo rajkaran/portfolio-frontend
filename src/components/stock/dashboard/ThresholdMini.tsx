@@ -2,8 +2,10 @@ import { Box, Typography } from '@mui/material';
 import { useState, useRef, useMemo, useEffect } from 'react';
 
 import { useSnackbar } from '../../common/SnackbarProvider';
-import type { ThresholdKey, Thresholds } from '../../../utils/stock/thresholdValidation';
+import type { Thresholds } from '../../../utils/stock/thresholdValidation';
 import { validateThresholdEdit } from '../../../utils/stock/thresholdValidation';
+import { getThresholdColor, isThresholdKey, labelSide } from '../../../constants/stockUI';
+import type { ThresholdKey } from '../../../constants/stockUI';
 
 type Props = {
   currentPrice: number;
@@ -17,47 +19,8 @@ function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
 }
 
-function lineColor(key: string): string {
-  switch (key) {
-    case 'thresholdGreen':
-      return '#2e7d32'; // green
-    case 'thresholdCyan':
-      return '#00acc1'; // cyan-ish
-    case 'thresholdOrange':
-      return '#fb8c00'; // orange
-    case 'thresholdRed':
-      return '#e53935'; // red
-    default:
-      return 'rgba(0,0,0,0.4)'; // fallback
-  }
-}
-
-function labelSide(key: string): 'left' | 'right' {
-  switch (key) {
-    case 'thresholdGreen':
-      return 'left';
-    case 'thresholdCyan':
-      return 'right';
-    case 'thresholdOrange':
-      return 'left';
-    case 'thresholdRed':
-      return 'right';
-    default:
-      return 'left';
-  }
-}
-
 function fmt(v: number) {
   return v.toFixed(2);
-}
-
-function isThresholdKey(k: string): k is ThresholdKey {
-  return (
-    k === 'thresholdGreen' ||
-    k === 'thresholdCyan' ||
-    k === 'thresholdOrange' ||
-    k === 'thresholdRed'
-  );
 }
 
 export default function ThresholdMini({
@@ -245,7 +208,7 @@ export default function ThresholdMini({
               top: l.y,
               transform: 'translateY(-50%)', // center the 2px line on y
               height: 2,
-              bgcolor: lineColor(l.key),
+              bgcolor: getThresholdColor(l.key),
               opacity: 0.9,
               zIndex: 1,
             }}

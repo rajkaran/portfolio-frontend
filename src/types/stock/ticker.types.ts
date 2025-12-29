@@ -16,6 +16,7 @@ export type TickerSnapshot = {
   quantityHolding?: number;
   totalReturn?: number;
   amountInvested?: number;
+  profit?: number;
 
   // thresholds
   thresholdGreen: number;

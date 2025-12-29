@@ -1,8 +1,4 @@
-export type ThresholdKey =
-  | 'thresholdGreen'
-  | 'thresholdCyan'
-  | 'thresholdOrange'
-  | 'thresholdRed';
+import type { ThresholdKey } from '../../constants/stockUI';
 
 export type Thresholds = Record<ThresholdKey, number>;
 

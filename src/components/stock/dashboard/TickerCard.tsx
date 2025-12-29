@@ -7,6 +7,27 @@ import { useRef } from 'react';
 import type { TickerSnapshot } from '../../../types/stock/ticker.types';
 import TimeAgo from '../shared/TimeAgo';
 import ThresholdMini from './ThresholdMini';
+import { THRESHOLD_COLORS } from '../../../constants/stockUI';
+
+function getBorderStatus(ticker: TickerSnapshot): {
+  color?: string;
+  blink?: boolean;
+} {
+  const p = ticker.currentPrice;
+
+  // "Positive blink" only when avgBookCost exists and > 0
+  const blinkAllowed = typeof ticker.avgBookCost === 'number' && ticker.avgBookCost > 0;
+
+  // Priority: strongest condition wins
+  if (p >= ticker.thresholdGreen) return { color: THRESHOLD_COLORS.thresholdGreen, blink: blinkAllowed };
+  if (p >= ticker.thresholdCyan) return { color: THRESHOLD_COLORS.thresholdCyan, blink: blinkAllowed };
+  if (p <= ticker.thresholdRed) return { color: THRESHOLD_COLORS.thresholdRed };
+  if (p <= ticker.thresholdOrange) return { color: THRESHOLD_COLORS.thresholdOrange };
+
+  // No alert
+  return {};
+}
+
 
 export default function TickerCard({
   ticker,
@@ -19,8 +40,30 @@ export default function TickerCard({
 }) {
   const cardRef = useRef<HTMLDivElement | null>(null);
 
+  const border = getBorderStatus(ticker);
+
   return (
-    <Card ref={cardRef} variant="outlined" sx={{ height: '100%' }}>
+    <Card
+      ref={cardRef}
+      variant="outlined"
+      sx={{
+        height: '100%',
+        borderWidth: 1,
+        borderStyle: 'solid',
+        borderColor: border.color ?? 'divider',
+
+        ...(border.blink
+          ? {
+            '@keyframes borderPulse': {
+              '0%': { boxShadow: `0 0 0 0 ${border.color}00` },
+              '50%': { boxShadow: `0 0 0 3px ${border.color}55` },
+              '100%': { boxShadow: `0 0 0 0 ${border.color}00` },
+            },
+            animation: 'borderPulse 1.1s ease-in-out infinite',
+          }
+          : null),
+      }}
+    >
       <CardContent
         sx={{
           p: 0,            // 8px on all sides
@@ -78,9 +121,52 @@ export default function TickerCard({
           />
         </Box>
 
-        <Box sx={{ mx: 1, mt: 0.5, display: 'flex', justifyContent: 'flex-end' }}>
-          <TimeAgo updatedAt={ticker.updateDatetime} />
+        <Box
+          sx={{
+            mx: 1,
+            mt: 0,
+            display: 'grid',
+            gridTemplateColumns: '1fr auto 1fr',
+            alignItems: 'center',
+          }}
+        >
+          {/* Left: Avg book cost */}
+          <Box sx={{ justifySelf: 'start' }}>
+            {typeof ticker.avgBookCost === 'number' ? (
+              <Typography variant="caption" sx={{ opacity: 0.8, fontSize: '0.65rem', lineHeight: 1 }}>
+                Avg {ticker.avgBookCost.toFixed(2)}
+              </Typography>
+            ) : null}
+          </Box>
+
+          {/* Center: Profit */}
+          <Box sx={{ justifySelf: 'center' }}>
+            {typeof ticker.profit === 'number' ? (
+              <Typography
+                variant="caption"
+                sx={{
+                  fontSize: '0.65rem',
+                  lineHeight: 1,
+                  fontWeight: 800,
+                  color:
+                    ticker.profit > 0
+                      ? 'success.main'
+                      : ticker.profit < 0
+                        ? 'error.main'
+                        : 'text.primary',
+                }}
+              >
+                {ticker.profit.toFixed(2)}
+              </Typography>
+            ) : null}
+          </Box>
+
+          {/* Right: TimeAgo */}
+          <Box sx={{ justifySelf: 'end' }}>
+            <TimeAgo updatedAt={ticker.updateDatetime} />
+          </Box>
         </Box>
+
       </CardContent>
     </Card>
   );
