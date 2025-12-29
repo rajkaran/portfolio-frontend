@@ -6,6 +6,10 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 
 import LeftNavBar from './LeftNavBar';
 
+const LEFT_RAIL_WIDTH = 72;
+const LEFT_DRAWER_WIDTH = 280;
+const RIGHT_WIDTH = 240;
+
 export default function StockShell({
   children,
   right,
@@ -14,95 +18,134 @@ export default function StockShell({
   right?: (args: { closeRight: () => void }) => ReactNode;
 }) {
   const isSmall = useMediaQuery('(max-width:768px)');
+  const hasRight = Boolean(right);
 
-  const [collapsed, setCollapsed] = useState(false);
-  const [rightOpen, setRightOpen] = useState(true);
+  // Left “mini vs expanded” (single sidebar that animates width)
+  const [leftExpanded, setLeftExpanded] = useState(false);
 
+  // Right panel open/close
+  const [rightOpen, setRightOpen] = useState(false);
+
+  // start closed on page load / breakpoint change
   useEffect(() => {
-    if (isSmall) {
-      setCollapsed(true);
-      setRightOpen(false);
-    } else {
-      setCollapsed(false);
-      setRightOpen(true);
-    }
+    setLeftExpanded(false);
+    setRightOpen(false);
   }, [isSmall]);
 
-  const leftWidth = collapsed ? 72 : 280;
+  // Mobile rule: only one overlay open at a time
+  const toggleLeft = () => {
+    setLeftExpanded((v) => {
+      const next = !v;
+      if (isSmall && next) setRightOpen(false);
+      return next;
+    });
+  };
 
-  const hasRight = Boolean(right);
-  const rightWidth = 240;
-  const showRightPanel = hasRight && rightOpen;
+  const closeRight = () => setRightOpen(false);
 
-  console.log({ isSmall, rightOpen, showRightPanel });
+  const toggleRight = () => {
+    if (!hasRight) return;
+    setRightOpen((v) => {
+      const next = !v;
+      if (isSmall && next) setLeftExpanded(false);
+      return next;
+    });
+  };
+
+  // Right overlays on mobile, pushes on desktop
+  const showRightAsOverlay = isSmall;
+
+  // Left width animates smoothly
+  const leftWidth = leftExpanded ? LEFT_DRAWER_WIDTH : LEFT_RAIL_WIDTH;
 
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        height: '100vh',
-        overflow: 'hidden',
-        position: 'relative',
-      }}
-    >
-      {/* Left */}
+    <Box sx={{ height: '100vh', overflow: 'hidden', position: 'relative' }}>
+      {/* LEFT: single sidebar (fixed) that animates width */}
       <Paper
-        elevation={2}
+        elevation={leftExpanded ? 6 : 2}
         sx={{
+          position: 'fixed',
+          left: 0,
+          top: 0,
+          bottom: 0,
           width: leftWidth,
-          height: '100vh',
           borderRadius: 0,
           overflow: 'hidden',
-          flexShrink: 0,
-          transition: 'width 200ms ease',
+          zIndex: leftExpanded ? 1400 : 1200,
+          transition: 'width 220ms ease',
         }}
       >
-        {/* Left column scroll container */}
-        <Box sx={{ height: '100%', overflowY: 'auto' }}>
-          <LeftNavBar collapsed={collapsed} onToggleCollapse={() => setCollapsed((v) => !v)} />
+        <Box sx={{ height: '100%', overflowY: 'auto', overflowX: 'hidden' }}>
+          <LeftNavBar collapsed={!leftExpanded} onToggleCollapse={toggleLeft} />
         </Box>
       </Paper>
 
-      {/* Center */}
-      <Box
-        sx={{
-          flex: 1,
-          height: '100vh',
-          overflowY: 'auto',
-          p: 2,
-        }}
-      >
-        {children}
-      </Box>
+      {/* Layout row: reserve ONLY the rail width so content never jumps */}
+      <Box sx={{ display: 'flex', height: '100vh' }}>
+        {/* Spacer for the rail (always 72px) */}
+        <Box sx={{ width: LEFT_RAIL_WIDTH, flexShrink: 0 }} />
 
-      {/* Right */}
-      {showRightPanel ? (
-        <Paper
-          elevation={2}
+        {/* Center */}
+        <Box
           sx={{
-            width: rightWidth,
+            flex: 1,
+            minWidth: 0,
             height: '100vh',
-            borderRadius: 0,
             overflowY: 'auto',
-            flexShrink: 0,
+            p: 2,
           }}
         >
-          {right?.({ closeRight: () => setRightOpen(false) })}
+          {children}
+        </Box>
+
+        {/* Right panel (desktop push) */}
+        {hasRight && rightOpen && !showRightAsOverlay ? (
+          <Paper
+            elevation={2}
+            sx={{
+              width: RIGHT_WIDTH,
+              height: '100vh',
+              borderRadius: 0,
+              overflowY: 'auto',
+              flexShrink: 0,
+            }}
+          >
+            {right?.({ closeRight })}
+          </Paper>
+        ) : null}
+      </Box>
+
+      {/* Right panel overlay (mobile) */}
+      {hasRight && rightOpen && showRightAsOverlay ? (
+        <Paper
+          elevation={6}
+          sx={{
+            position: 'fixed',
+            right: 0,
+            top: 0,
+            bottom: 0,
+            width: RIGHT_WIDTH,
+            borderRadius: 0,
+            overflowY: 'auto',
+            zIndex: 1400,
+          }}
+        >
+          {right?.({ closeRight })}
         </Paper>
       ) : null}
 
-      {/* Floating tab button: ONLY on small screens AND ONLY when panel is hidden */}
+      {/* Floating tab button for right (when closed) */}
       {hasRight && !rightOpen ? (
         <Box
           sx={{
             position: 'fixed',
             right: 0,
             top: 96,
-            zIndex: 1300,
+            zIndex: 1500,
           }}
         >
           <IconButton
-            onClick={() => setRightOpen((v) => !v)}
+            onClick={toggleRight}
             sx={{
               borderRadius: '10px 0 0 10px',
               width: 36,

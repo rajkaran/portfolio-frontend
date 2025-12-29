@@ -1,5 +1,4 @@
 import { Box } from '@mui/material';
-import Grid from '@mui/material/Grid';
 import type { TickerSnapshot } from '../../../types/stock/ticker.types';
 import TickerCard from './TickerCard';
 
@@ -14,13 +13,19 @@ export default function TickerGrid({
 }) {
   return (
     <Box sx={{ mt: 2 }}>
-      <Grid container spacing={2}>
+      <Box
+        sx={{
+          display: 'grid',
+          gap: 2,
+          // key line: number of columns depends on *available width*
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          alignItems: 'stretch',
+        }}
+      >
         {tickers.map((t) => (
-          <Grid key={t.id} size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
-            <TickerCard ticker={t} onZoom={onZoom} onTrade={onTrade} />
-          </Grid>
+          <TickerCard key={t.id} ticker={t} onZoom={onZoom} onTrade={onTrade} />
         ))}
-      </Grid>
+      </Box>
     </Box>
   );
 }
