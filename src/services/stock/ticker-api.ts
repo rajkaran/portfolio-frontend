@@ -1,9 +1,5 @@
-import axios from 'axios';
 import type { Market, StockClass, Category } from '../../types/stock/ticker.types';
-
-const api = axios.create({
-  baseURL: import.meta.env.VITE_LOOPBACK_API_BASE_URL ?? 'http://localhost:3000',
-});
+import { loopbackApi } from "./loopback-api";
 
 export type TickerDTO = {
   id: string;
@@ -22,7 +18,12 @@ export async function listTickers(params?: { market?: Market; stockClass?: Stock
   const and: Array<Record<string, unknown>> = [];
 
   if (params?.market) and.push({ market: params.market });
-  if (params?.stockClass) and.push({ stockClasses: params.stockClass });
+
+  if (params?.stockClass) {
+    // More explicit for array fields (stockClasses is string[])
+    and.push({ stockClasses: { inq: [params.stockClass] } });
+  }
+
   and.push({ isActive: true });
 
   const filter = {
@@ -39,7 +40,7 @@ export async function listTickers(params?: { market?: Market; stockClass?: Stock
     },
   };
 
-  const res = await api.get('/tickers', {
+  const res = await loopbackApi.get('/tickers', {
     params: {
       filter: JSON.stringify(filter),
     },
@@ -49,14 +50,14 @@ export async function listTickers(params?: { market?: Market; stockClass?: Stock
 }
 
 export async function createTicker(body: CreateTickerDTO) {
-  const res = await api.post<TickerDTO>('/tickers', body);
+  const res = await loopbackApi.post<TickerDTO>('/tickers', body);
   return res.data;
 }
 
 export async function updateTicker(id: string, body: UpdateTickerDTO) {
-  await api.patch(`/tickers/${id}`, body);
+  await loopbackApi.patch(`/tickers/${id}`, body);
 }
 
 export async function deleteTicker(id: string) {
-  await api.delete(`/tickers/${id}`);
+  await loopbackApi.delete(`/tickers/${id}`);
 }

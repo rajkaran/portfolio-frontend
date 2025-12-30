@@ -25,7 +25,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import { useEffect, useMemo, useState } from 'react';
 
-import type { Market, StockClass, Category } from '../../types/stock/ticker.types';
+import type { Market, StockClass, Bucket } from '../../types/stock/ticker.types';
 import { useSnackbar } from '../../components/common/SnackbarProvider';
 import {
   createTicker,
@@ -35,17 +35,7 @@ import {
   type TickerDTO,
 } from '../../services/stock/ticker-api';
 import StockShell from '../../components/stock/layout/StockShell';
-
-const MARKETS: Array<{ label: string; value: Market }> = [
-  { label: 'Canada', value: 'canada' },
-  { label: 'USA', value: 'usa' },
-  { label: 'India', value: 'india' },
-];
-
-const CLASSES: Array<{ label: string; value: StockClass }> = [
-  { label: 'Dividend', value: 'dividend' },
-  { label: 'Trade', value: 'trade' },
-];
+import { useTickerOptions } from '../../hooks/stock/useTickerOptions';
 
 type FilterState = {
   market: 'all' | Market;
@@ -58,27 +48,58 @@ type FormState = {
   market: Market;
   stockClasses: StockClass[];
   industry: string;
-  bucket: Category;
+  bucket: Bucket;
+};
+
+const DEFAULT_FORM: FormState = {
+  symbol: '',
+  companyName: '',
+  market: 'canada',
+  stockClasses: ['dividend'],
+  industry: '',
+  bucket: 'watch',
 };
 
 export default function Ticker() {
   const { showSnackbar } = useSnackbar();
+  const { options, loading: optionsLoading } = useTickerOptions(true);
 
+  // Page state
   const [filters, setFilters] = useState<FilterState>({ market: 'all', stockClass: 'all' });
   const [rows, setRows] = useState<TickerDTO[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // dialog
+  // dialog state
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<TickerDTO | null>(null);
-  const [form, setForm] = useState<FormState>({
-    symbol: '',
-    companyName: '',
-    market: 'canada',
-    stockClasses: ['dividend'],
-    industry: '',
-    bucket: 'watch',
-  });
+  const [form, setForm] = useState<FormState>(DEFAULT_FORM);
+
+  // -------- Options helpers (key -> label) --------
+  const marketItems = useMemo(
+    () => (options ? Object.entries(options.market).map(([value, label]) => ({ value: value as Market, label })) : []),
+    [options]
+  );
+
+  const classItems = useMemo(
+    () => (options ? Object.entries(options.stockClass).map(([value, label]) => ({ value: value as StockClass, label })) : []),
+    [options]
+  );
+
+  const bucketItems = useMemo(
+    () => (options ? Object.entries(options.bucket).map(([value, label]) => ({ value: value as Bucket, label })) : []),
+    [options]
+  );
+
+  const marketLabel = (m: Market) => options?.market?.[m] ?? m;
+  const classLabel = (c: StockClass) => options?.stockClass?.[c] ?? c;
+  const bucketLabel = (b: Bucket) => options?.bucket?.[b] ?? b;
+
+  // Normalize MUI Select multiple value (can be string in autofill edge case)
+  const normalizeMulti = (value: unknown): StockClass[] => {
+    if (Array.isArray(value)) return value as StockClass[];
+    if (typeof value === 'string') return value.split(',').map((x) => x.trim()) as StockClass[];
+    return [];
+  };
 
   const fetchRows = async () => {
     setLoading(true);
@@ -103,7 +124,7 @@ export default function Ticker() {
 
   const openCreate = () => {
     setEditing(null);
-    setForm({ symbol: '', companyName: '', market: 'canada', stockClasses: ['dividend'], industry: '', bucket: 'watch' });
+    setForm(DEFAULT_FORM);
     setOpen(true);
   };
 
@@ -120,37 +141,40 @@ export default function Ticker() {
     setOpen(true);
   };
 
+  const closeDialog = () => setOpen(false);
+
   const canSave = useMemo(() => {
-    return form.symbol.trim().length >= 1 && form.companyName.trim().length >= 1 && form.stockClasses.length >= 1;
-  }, [form]);
+    // Prevent saving while options are still loading (avoids invalid/default keys)
+    return (
+      !optionsLoading &&
+      form.symbol.trim().length >= 1 &&
+      form.companyName.trim().length >= 1 &&
+      form.stockClasses.length >= 1
+    );
+  }, [form, optionsLoading]);
 
   const save = async () => {
     if (!canSave) return;
 
     try {
+      const payload = {
+        symbol: form.symbol.trim().toUpperCase(),
+        companyName: form.companyName.trim(),
+        market: form.market,
+        stockClasses: form.stockClasses,
+        industry: form.industry,
+        bucket: form.bucket,
+      };
+
       if (!editing) {
-        await createTicker({
-          symbol: form.symbol.trim().toUpperCase(),
-          companyName: form.companyName.trim(),
-          market: form.market,
-          stockClasses: form.stockClasses,
-          industry: form.industry,
-          bucket: form.bucket,
-        });
+        await createTicker(payload);
         showSnackbar('Ticker added', { severity: 'success' });
       } else {
-        await updateTicker(editing.id, {
-          symbol: form.symbol.trim().toUpperCase(),
-          companyName: form.companyName.trim(),
-          market: form.market,
-          stockClasses: form.stockClasses,
-          industry: form.industry,
-          bucket: form.bucket,
-        });
+        await updateTicker(editing.id, payload);
         showSnackbar('Ticker updated', { severity: 'success' });
       }
 
-      setOpen(false);
+      closeDialog();
       await fetchRows();
     } catch {
       showSnackbar('Save failed', { severity: 'error' });
@@ -175,7 +199,7 @@ export default function Ticker() {
       <Box>
         {/* Top bar */}
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} alignItems={{ md: 'center' }}>
-          <Typography variant="h5" sx={{ fontWeight: 800 }}>
+          <Typography variant="h5" sx={{ fontWeight: 500 }}>
             Tickers
           </Typography>
 
@@ -201,10 +225,11 @@ export default function Ticker() {
             <Select
               label="Market"
               value={filters.market}
+              disabled={optionsLoading}
               onChange={(e) => setFilters((p) => ({ ...p, market: e.target.value as FilterState['market'] }))}
             >
               <MenuItem value="all">All</MenuItem>
-              {MARKETS.map((m) => (
+              {marketItems.map((m) => (
                 <MenuItem key={m.value} value={m.value}>
                   {m.label}
                 </MenuItem>
@@ -217,12 +242,13 @@ export default function Ticker() {
             <Select
               label="Class"
               value={filters.stockClass}
+              disabled={optionsLoading}
               onChange={(e) =>
                 setFilters((p) => ({ ...p, stockClass: e.target.value as FilterState['stockClass'] }))
               }
             >
               <MenuItem value="all">All</MenuItem>
-              {CLASSES.map((c) => (
+              {classItems.map((c) => (
                 <MenuItem key={c.value} value={c.value}>
                   {c.label}
                 </MenuItem>
@@ -255,18 +281,16 @@ export default function Ticker() {
                 <TableRow key={t.id} hover>
                   <TableCell sx={{ fontWeight: 700 }}>{t.symbol}</TableCell>
                   <TableCell>{t.companyName}</TableCell>
-                  <TableCell>{t.market}</TableCell>
+                  <TableCell>{marketLabel(t.market)}</TableCell>
                   <TableCell>
                     <Stack direction="row" spacing={0.75} flexWrap="wrap">
                       {t.stockClasses.map((c) => (
-                        <Chip key={c} size="small" label={c} />
+                        <Chip key={c} size="small" label={classLabel(c)} />
                       ))}
                     </Stack>
                   </TableCell>
                   <TableCell>{t.industry}</TableCell>
-                  <TableCell>
-                    <Chip size="small" label={t.bucket} />
-                  </TableCell>
+                  <TableCell>{bucketLabel(t.bucket)}</TableCell>
                   <TableCell align="right">
                     <IconButton size="small" onClick={() => openEdit(t)} aria-label="Edit">
                       <EditIcon fontSize="small" />
@@ -279,7 +303,7 @@ export default function Ticker() {
               ))}
               {rows.length === 0 && !loading ? (
                 <TableRow>
-                  <TableCell colSpan={5} sx={{ opacity: 0.7, py: 3 }}>
+                  <TableCell colSpan={7} sx={{ opacity: 0.7, py: 3 }}>
                     No tickers yet.
                   </TableCell>
                 </TableRow>
@@ -312,13 +336,16 @@ export default function Ticker() {
               <Select
                 label="Market"
                 value={form.market}
+                disabled={optionsLoading}
                 onChange={(e) => setForm((p) => ({ ...p, market: e.target.value as Market }))}
               >
-                {MARKETS.map((m) => (
-                  <MenuItem key={m.value} value={m.value}>
-                    {m.label}
-                  </MenuItem>
-                ))}
+                {optionsLoading ? (
+                  <MenuItem value={form.market} disabled>Loading…</MenuItem>
+                ) : (
+                  marketItems.map((m) => (
+                    <MenuItem key={m.value} value={m.value}>{m.label}</MenuItem>
+                  ))
+                )}
               </Select>
             </FormControl>
 
@@ -328,14 +355,22 @@ export default function Ticker() {
                 multiple
                 label="Classes"
                 value={form.stockClasses}
-                onChange={(e) => setForm((p) => ({ ...p, stockClasses: e.target.value as StockClass[] }))}
-                renderValue={(selected) => (selected as string[]).join(', ')}
+                disabled={optionsLoading}
+                onChange={(e) => {
+                  const next = normalizeMulti(e.target.value);
+                  setForm((p) => ({ ...p, stockClasses: next }));
+                }}
+                renderValue={(selected) =>
+                  (selected as StockClass[]).map((c) => classLabel(c)).join(', ')
+                }
               >
-                {CLASSES.map((c) => (
-                  <MenuItem key={c.value} value={c.value}>
-                    {c.label}
-                  </MenuItem>
-                ))}
+                {optionsLoading ? (
+                  <MenuItem disabled>Loading…</MenuItem>
+                ) : (
+                  classItems.map((c) => (
+                    <MenuItem key={c.value} value={c.value}>{c.label}</MenuItem>
+                  ))
+                )}
               </Select>
             </FormControl>
 
@@ -347,24 +382,27 @@ export default function Ticker() {
             />
 
             <FormControl size="small">
-              <InputLabel>Category</InputLabel>
+              <InputLabel>Bucket</InputLabel>
               <Select
-                label="Category"
+                label="Bucket"
                 value={form.bucket}
-                onChange={(e) => setForm((p) => ({ ...p, bucket: e.target.value as Category }))}
+                onChange={(e) => setForm((p) => ({ ...p, bucket: e.target.value as Bucket }))}
               >
-                <MenuItem value="core">Core</MenuItem>
-                <MenuItem value="watch">Watch</MenuItem>
-                <MenuItem value="once">Once in a while</MenuItem>
-                <MenuItem value="avoid">Avoid</MenuItem>
+                {optionsLoading ? (
+                  <MenuItem value={form.bucket} disabled>Loading…</MenuItem>
+                ) : (
+                  bucketItems.map((b) => (
+                    <MenuItem key={b.value} value={b.value}>{b.label}</MenuItem>
+                  ))
+                )}
               </Select>
             </FormControl>
           </DialogContent>
 
           <DialogActions>
-            <Button onClick={() => setOpen(false)}>Cancel</Button>
+            <Button onClick={closeDialog}>CANCEL</Button>
             <Button variant="contained" onClick={() => void save()} disabled={!canSave}>
-              Save
+              SAVE
             </Button>
           </DialogActions>
         </Dialog>

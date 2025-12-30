@@ -1,7 +1,7 @@
 export type Market = 'canada' | 'usa' | 'india';
 export type StockClass = 'dividend' | 'trade' | 'longTerm';
 
-export type Category = 'core' | 'watch' | 'once' | 'avoid';
+export type Bucket = 'core' | 'watch' | 'once' | 'avoid';
 
 export type TickerBase = {
   id: string;
@@ -17,7 +17,7 @@ export type TickerSnapshot = {
   name: string; // e.g. "Enbridge"
   market: Market; // india, canada, usa
   stockClass: StockClass; // dividend, trade
-  category: Category; // core, watch, once, avoid
+  category: Bucket; // core, watch, once, avoid
 
   currentPrice: number;
   avgBookCost?: number;
