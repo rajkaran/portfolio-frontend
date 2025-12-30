@@ -25,7 +25,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import { useEffect, useMemo, useState } from 'react';
 
-import type { Market, StockClass } from '../../types/stock/ticker.types';
+import type { Market, StockClass, Category } from '../../types/stock/ticker.types';
 import { useSnackbar } from '../../components/common/SnackbarProvider';
 import {
   createTicker,
@@ -54,9 +54,11 @@ type FilterState = {
 
 type FormState = {
   symbol: string;
-  name: string;
+  companyName: string;
   market: Market;
   stockClasses: StockClass[];
+  industry: string;
+  bucket: Category;
 };
 
 export default function Ticker() {
@@ -71,9 +73,11 @@ export default function Ticker() {
   const [editing, setEditing] = useState<TickerDTO | null>(null);
   const [form, setForm] = useState<FormState>({
     symbol: '',
-    name: '',
+    companyName: '',
     market: 'canada',
     stockClasses: ['dividend'],
+    industry: '',
+    bucket: 'watch',
   });
 
   const fetchRows = async () => {
@@ -83,6 +87,7 @@ export default function Ticker() {
         market: filters.market === 'all' ? undefined : filters.market,
         stockClass: filters.stockClass === 'all' ? undefined : filters.stockClass,
       });
+      console.log('Fetched tickers:', data);
       setRows(data);
     } catch {
       showSnackbar('Failed to load tickers', { severity: 'error' });
@@ -98,7 +103,7 @@ export default function Ticker() {
 
   const openCreate = () => {
     setEditing(null);
-    setForm({ symbol: '', name: '', market: 'canada', stockClasses: ['dividend'] });
+    setForm({ symbol: '', companyName: '', market: 'canada', stockClasses: ['dividend'], industry: '', bucket: 'watch' });
     setOpen(true);
   };
 
@@ -106,15 +111,17 @@ export default function Ticker() {
     setEditing(t);
     setForm({
       symbol: t.symbol,
-      name: t.name,
+      companyName: t.companyName,
       market: t.market,
       stockClasses: t.stockClasses,
+      industry: t.industry,
+      bucket: t.bucket,
     });
     setOpen(true);
   };
 
   const canSave = useMemo(() => {
-    return form.symbol.trim().length >= 1 && form.name.trim().length >= 1 && form.stockClasses.length >= 1;
+    return form.symbol.trim().length >= 1 && form.companyName.trim().length >= 1 && form.stockClasses.length >= 1;
   }, [form]);
 
   const save = async () => {
@@ -124,17 +131,21 @@ export default function Ticker() {
       if (!editing) {
         await createTicker({
           symbol: form.symbol.trim().toUpperCase(),
-          name: form.name.trim(),
+          companyName: form.companyName.trim(),
           market: form.market,
           stockClasses: form.stockClasses,
+          industry: form.industry,
+          bucket: form.bucket,
         });
         showSnackbar('Ticker added', { severity: 'success' });
       } else {
         await updateTicker(editing.id, {
           symbol: form.symbol.trim().toUpperCase(),
-          name: form.name.trim(),
+          companyName: form.companyName.trim(),
           market: form.market,
           stockClasses: form.stockClasses,
+          industry: form.industry,
+          bucket: form.bucket,
         });
         showSnackbar('Ticker updated', { severity: 'success' });
       }
@@ -161,8 +172,6 @@ export default function Ticker() {
 
   return (
     <StockShell>
-
-
       <Box>
         {/* Top bar */}
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} alignItems={{ md: 'center' }}>
@@ -231,10 +240,12 @@ export default function Ticker() {
           <Table size="small">
             <TableHead>
               <TableRow>
-                <TableCell sx={{ width: 140 }}>Symbol</TableCell>
-                <TableCell>Company</TableCell>
-                <TableCell sx={{ width: 120 }}>Market</TableCell>
-                <TableCell sx={{ width: 220 }}>Classes</TableCell>
+                <TableCell>Symbol</TableCell>
+                <TableCell sx={{ width: 180 }}>Company</TableCell>
+                <TableCell>Market</TableCell>
+                <TableCell>Classes</TableCell>
+                <TableCell sx={{ width: 180 }}>Industry</TableCell>
+                <TableCell>Bucket</TableCell>
                 <TableCell sx={{ width: 96 }} />
               </TableRow>
             </TableHead>
@@ -243,7 +254,7 @@ export default function Ticker() {
               {rows.map((t) => (
                 <TableRow key={t.id} hover>
                   <TableCell sx={{ fontWeight: 700 }}>{t.symbol}</TableCell>
-                  <TableCell>{t.name}</TableCell>
+                  <TableCell>{t.companyName}</TableCell>
                   <TableCell>{t.market}</TableCell>
                   <TableCell>
                     <Stack direction="row" spacing={0.75} flexWrap="wrap">
@@ -251,6 +262,10 @@ export default function Ticker() {
                         <Chip key={c} size="small" label={c} />
                       ))}
                     </Stack>
+                  </TableCell>
+                  <TableCell>{t.industry}</TableCell>
+                  <TableCell>
+                    <Chip size="small" label={t.bucket} />
                   </TableCell>
                   <TableCell align="right">
                     <IconButton size="small" onClick={() => openEdit(t)} aria-label="Edit">
@@ -277,18 +292,19 @@ export default function Ticker() {
         <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
           <DialogTitle>{editing ? `Edit ${editing.symbol}` : 'Add ticker'}</DialogTitle>
 
-          <DialogContent sx={{ pt: 2, display: 'grid', gap: 1.5 }}>
+          <DialogContent sx={{ display: 'grid', gap: 1.5 }}>
             <TextField
               size="small"
               label="Symbol"
+              sx={{ mt: 1 }}
               value={form.symbol}
               onChange={(e) => setForm((p) => ({ ...p, symbol: e.target.value }))}
             />
             <TextField
               size="small"
               label="Company name"
-              value={form.name}
-              onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+              value={form.companyName}
+              onChange={(e) => setForm((p) => ({ ...p, companyName: e.target.value }))}
             />
 
             <FormControl size="small">
@@ -320,6 +336,27 @@ export default function Ticker() {
                     {c.label}
                   </MenuItem>
                 ))}
+              </Select>
+            </FormControl>
+
+            <TextField
+              size="small"
+              label="Industry"
+              value={form.industry}
+              onChange={(e) => setForm((p) => ({ ...p, industry: e.target.value }))}
+            />
+
+            <FormControl size="small">
+              <InputLabel>Category</InputLabel>
+              <Select
+                label="Category"
+                value={form.bucket}
+                onChange={(e) => setForm((p) => ({ ...p, bucket: e.target.value as Category }))}
+              >
+                <MenuItem value="core">Core</MenuItem>
+                <MenuItem value="watch">Watch</MenuItem>
+                <MenuItem value="once">Once in a while</MenuItem>
+                <MenuItem value="avoid">Avoid</MenuItem>
               </Select>
             </FormControl>
           </DialogContent>
