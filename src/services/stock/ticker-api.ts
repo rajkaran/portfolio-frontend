@@ -1,18 +1,5 @@
-import type { Market, StockClass, Category } from '../../types/stock/ticker.types';
+import type { Market, StockClass, TickerDTO, CreateTickerDTO, UpdateTickerDTO } from '../../types/stock/ticker.types';
 import { loopbackApi } from "./loopback-api";
-
-export type TickerDTO = {
-  id: string;
-  symbol: string;
-  companyName: string;
-  market: Market;
-  stockClasses: StockClass[];
-  industry: string;
-  bucket: Category;
-};
-
-export type CreateTickerDTO = Omit<TickerDTO, 'id'>;
-export type UpdateTickerDTO = Partial<CreateTickerDTO>;
 
 export async function listTickers(params?: { market?: Market; stockClass?: StockClass }) {
   const and: Array<Record<string, unknown>> = [];

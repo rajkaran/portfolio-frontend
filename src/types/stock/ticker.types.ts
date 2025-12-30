@@ -1,15 +1,6 @@
 export type Market = 'canada' | 'usa' | 'india';
 export type StockClass = 'dividend' | 'trade' | 'longTerm';
-
 export type Bucket = 'core' | 'watch' | 'once' | 'avoid';
-
-export type TickerBase = {
-  id: string;
-  symbol: string;
-  name: string;
-  market: Market;
-  stockClasses: StockClass[];
-};
 
 export type TickerSnapshot = {
   id: string;
@@ -17,7 +8,7 @@ export type TickerSnapshot = {
   name: string; // e.g. "Enbridge"
   market: Market; // india, canada, usa
   stockClass: StockClass; // dividend, trade
-  category: Bucket; // core, watch, once, avoid
+  bucket: Bucket; // core, watch, once, avoid
 
   currentPrice: number;
   avgBookCost?: number;
@@ -34,3 +25,16 @@ export type TickerSnapshot = {
 
   updateDatetime: number; // epoch ms
 };
+
+export type TickerDTO = {
+  id: string;
+  symbol: string;
+  companyName: string;
+  market: Market;
+  stockClasses: StockClass[];
+  industry: string;
+  bucket: Bucket;
+};
+
+export type CreateTickerDTO = Omit<TickerDTO, 'id'>;
+export type UpdateTickerDTO = Partial<CreateTickerDTO>;
