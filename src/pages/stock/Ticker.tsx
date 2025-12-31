@@ -25,14 +25,13 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import { useEffect, useMemo, useState } from 'react';
 
-import type { Market, StockClass, Bucket } from '../../types/stock/ticker.types';
+import type { Market, StockClass, Bucket, TickerDTO } from '../../types/stock/ticker.types';
 import { useSnackbar } from '../../components/common/SnackbarProvider';
 import {
   createTicker,
   deleteTicker,
   listTickers,
   updateTicker,
-  type TickerDTO,
 } from '../../services/stock/ticker-api';
 import StockShell from '../../components/stock/layout/StockShell';
 import { useTickerOptions } from '../../hooks/stock/useTickerOptions';
