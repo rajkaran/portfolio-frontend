@@ -26,6 +26,34 @@ export type TickerSnapshot = {
   updateDatetime: number; // epoch ms
 };
 
+export type TickerLatestDTO = {
+  id: string;
+  symbol: string;
+  symbolId: number;
+
+  companyName?: string;
+  market: string;
+  stockClasses: string[];
+  industry: string;
+  bucket: string;
+
+  lastPrice: number;
+  bidPrice: number;
+  askPrice: number;
+  volume: number;
+  updateDatetime: Date;
+
+  avgBookCost?: number,
+  quantityHolding?: number,
+  totalReturn?: number,
+
+  thresholdGreen: number;
+  thresholdCyan: number;
+  thresholdOrange: number;
+  thresholdRed: number;
+};
+
+
 export type TickerDTO = {
   id: string;
   symbol: string;

@@ -1,5 +1,5 @@
 import { Box } from '@mui/material';
-import type { TickerSnapshot } from '../../../types/stock/ticker.types';
+import type { TickerDTO, TickerLatestDTO, TickerSnapshot } from '../../../types/stock/ticker.types';
 import TickerCard from './TickerCard';
 
 export default function TickerGrid({
@@ -7,7 +7,7 @@ export default function TickerGrid({
   onZoom,
   onTrade,
 }: {
-  tickers: TickerSnapshot[];
+  tickers: TickerLatestDTO[];
   onZoom: (id: string, anchorEl: HTMLElement | null) => void;
   onTrade: (id: string, side: 'buy' | 'sell') => void;
 }) {

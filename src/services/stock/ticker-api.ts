@@ -1,3 +1,4 @@
+import { Android } from '@mui/icons-material';
 import type { Market, StockClass, TickerDTO, CreateTickerDTO, UpdateTickerDTO } from '../../types/stock/ticker.types';
 import { loopbackApi } from "./loopback-api";
 
@@ -35,6 +36,41 @@ export async function listTickers(params?: { market?: Market; stockClass?: Stock
 
   return res.data;
 }
+
+export async function listTickerLatest() {
+  const filter = {
+    where: { and: [{ isActive: true }, { thresholdGreen: { exists: true } }] },
+    fields: {
+      id: true,
+      symbol: true,
+      companyName: true,
+      market: true,
+      stockClasses: true,
+      industry: true,
+      bucket: true,
+
+      symbolId: true,
+      lastPrice: true,
+      bidPrice: true,
+      askPrice: true,
+      volume: true,
+      updateDatetime: true,
+
+      thresholdGreen: true,
+      thresholdCyan: true,
+      thresholdOrange: true,
+      thresholdRed: true,
+    },
+    order: ['symbol ASC'],
+  };
+
+  const res = await loopbackApi.get('/tickers', {
+    params: { filter: JSON.stringify(filter) },
+  });
+
+  return res.data;
+}
+
 
 export async function createTicker(body: CreateTickerDTO) {
   const res = await loopbackApi.post<TickerDTO>('/tickers', body);

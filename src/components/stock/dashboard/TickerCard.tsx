@@ -4,16 +4,16 @@ import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import SellIcon from '@mui/icons-material/Sell';
 import { useRef } from 'react';
 
-import type { TickerSnapshot } from '../../../types/stock/ticker.types';
+import type { TickerDTO, TickerLatestDTO } from '../../../types/stock/ticker.types';
 import TimeAgo from '../shared/TimeAgo';
 import ThresholdMini from './ThresholdMini';
 import { THRESHOLD_COLORS } from '../../../constants/stockUI';
 
-function getBorderStatus(ticker: TickerSnapshot): {
+function getBorderStatus(ticker: TickerLatestDTO): {
   color?: string;
   blink?: boolean;
 } {
-  const p = ticker.currentPrice;
+  const p = ticker.lastPrice;
 
   // "Positive blink" only when avgBookCost exists and > 0
   const blinkAllowed = typeof ticker.avgBookCost === 'number' && ticker.avgBookCost > 0;
@@ -34,7 +34,7 @@ export default function TickerCard({
   onZoom,
   onTrade,
 }: {
-  ticker: TickerSnapshot;
+  ticker: TickerLatestDTO;
   onZoom: (id: string, anchorEl: HTMLElement | null) => void;
   onTrade: (id: string, side: 'buy' | 'sell') => void;
 }) {
@@ -109,7 +109,7 @@ export default function TickerCard({
         {/* Placeholder for your threshold-line visual */}
         <Box sx={{ mt: .5 }}>
           <ThresholdMini
-            currentPrice={ticker.currentPrice}
+            currentPrice={ticker.lastPrice}
             thresholds={[
               { key: 'thresholdGreen', value: ticker.thresholdGreen },
               { key: 'thresholdCyan', value: ticker.thresholdCyan },
@@ -141,7 +141,7 @@ export default function TickerCard({
 
           {/* Center: Profit */}
           <Box sx={{ justifySelf: 'center' }}>
-            {typeof ticker.profit === 'number' ? (
+            {typeof ticker.totalReturn === 'number' ? (
               <Typography
                 variant="caption"
                 sx={{
@@ -149,21 +149,22 @@ export default function TickerCard({
                   lineHeight: 1,
                   fontWeight: 800,
                   color:
-                    ticker.profit > 0
+                    ticker.totalReturn > 0
                       ? 'success.main'
-                      : ticker.profit < 0
+                      : ticker.totalReturn < 0
                         ? 'error.main'
                         : 'text.primary',
                 }}
               >
-                {ticker.profit.toFixed(2)}
+                {ticker.totalReturn.toFixed(2)}
               </Typography>
             ) : null}
           </Box>
 
           {/* Right: TimeAgo */}
           <Box sx={{ justifySelf: 'end' }}>
-            <TimeAgo updatedAt={ticker.updateDatetime} />
+            {/* do the subtraction to get seconds */}
+            {/* <TimeAgo updatedAt={ticker.updateDatetime} /> */}
           </Box>
         </Box>
 

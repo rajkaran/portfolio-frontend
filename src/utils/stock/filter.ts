@@ -20,13 +20,13 @@ export function applyFilters(tickers: TickerSnapshot[], filters: StockFilters): 
   const search = filters.search.trim().toLowerCase();
 
   return tickers.filter((t) => {
-    if (t.market !== filters.market) return false;
-    if (t.stockClass !== filters.stockClass) return false;
+    // if (t.market !== filters.market) return false;
+    // if (t.stockClass !== filters.stockClass) return false;
 
-    if (search) {
-      const hay = `${t.symbol} ${t.name}`.toLowerCase();
-      if (!hay.includes(search)) return false;
-    }
+    // if (search) {
+    //   const hay = `${t.symbol} ${t.name}`.toLowerCase();
+    //   if (!hay.includes(search)) return false;
+    // }
     return true;
   });
 }

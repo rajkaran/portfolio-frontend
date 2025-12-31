@@ -1,15 +1,18 @@
 import { Box, Typography } from '@mui/material';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import StockShell from '../../components/stock/layout/StockShell';
 import FilterBar from '../../components/stock/dashboard/FilterBar';
 import RightFavorableBar from '../../components/stock/dashboard/RightFavorableBar';
 import TickerGrid from '../../components/stock/dashboard/TickerGrid';
 
-import type { TickerSnapshot } from '../../types/stock/ticker.types';
+import type { TickerDTO, TickerLatestDTO, TickerSnapshot } from '../../types/stock/ticker.types';
 import { applyFilters, defaultStockFilters } from '../../utils/stock/filter';
 import { favorabilityScore } from '../../utils/stock/favorability';
 import TickerCardTooltip from '../../components/stock/dashboard/TickerDetailTooltip';
+import { listTickerLatest } from '../../services/stock/ticker-api';
+import { connectPricesWs } from '../../services/stock/prices-ws';
+import type { PriceUpdateDTO } from '../../types/stock/price-update.types';
 
 
 const DUMMY_TICKERS: TickerSnapshot[] = [
@@ -164,6 +167,61 @@ export default function Dashboard() {
   const [zoomTickerId, setZoomTickerId] = useState<string | null>(null);
   const [zoomAnchorEl, setZoomAnchorEl] = useState<HTMLElement | null>(null);
 
+  const [tickerMap, setTickerMap] = useState<Map<string, TickerLatestDTO>>(new Map());
+  const [wsConnected, setWsConnected] = useState(false);
+
+  // For rendering (stable array)
+  const tickers = useMemo(() => Array.from(tickerMap.values()), [tickerMap]);
+
+  useEffect(() => {
+    let wsHandle: { close: () => void } | null = null;
+    let cancelled = false;
+
+    (async () => {
+      // 1) initial snapshot
+      const rows: TickerLatestDTO[] = await listTickerLatest();
+      if (cancelled) return;
+
+      const map = new Map<string, TickerLatestDTO>();
+      for (const t of rows) map.set(t.symbol, t);
+      setTickerMap(map);
+
+      // 2) websocket updates
+      wsHandle = connectPricesWs({
+        onStatus: (s) => setWsConnected(s.connected),
+        onPriceUpdate: (u: PriceUpdateDTO) => {
+          // normalize provider symbol -> your DB symbol (strip .TO)
+          const normalizedSymbol = u.symbol.endsWith('.TO') ? u.symbol.replace(/\.TO$/, '') : u.symbol;
+
+          setTickerMap((prev) => {
+            const existing = prev.get(normalizedSymbol);
+            if (!existing) return prev;
+
+            const next = new Map(prev);
+            next.set(normalizedSymbol, {
+              ...existing,
+              lastPrice: u.last ?? existing.lastPrice,
+              bidPrice: u.bid ?? existing.bidPrice,
+              askPrice: u.ask ?? existing.askPrice,
+              volume: u.volume ?? existing.volume,
+              updateDatetime: u.tradeDatetime,
+              avgBookCost: existing.avgBookCost ?? existing.lastPrice,
+              quantityHolding: existing.quantityHolding ?? 0,
+              totalReturn: existing.totalReturn ?? 0,
+              symbolId: u.symbolId ?? existing.symbolId,
+            });
+            return next;
+          });
+        },
+      });
+    })().catch(console.error);
+
+    return () => {
+      cancelled = true;
+      wsHandle?.close();
+    };
+  }, []);
+
 
   const visibleTickers = useMemo(() => {
     const filtered = applyFilters(DUMMY_TICKERS, filters);
@@ -200,7 +258,7 @@ export default function Dashboard() {
         <FilterBar value={filters} onChange={setFilters} />
       </Box>
 
-      <TickerGrid tickers={visibleTickers} onZoom={onZoom} onTrade={onTrade} />
+      <TickerGrid tickers={tickers} onZoom={onZoom} onTrade={onTrade} />
 
       <TickerCardTooltip
         open={Boolean(zoomTickerId)}
