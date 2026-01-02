@@ -1,8 +1,4 @@
-export type ThresholdKey =
-  | 'thresholdGreen'
-  | 'thresholdCyan'
-  | 'thresholdOrange'
-  | 'thresholdRed';
+export type ThresholdKey = 'thresholdGreen' | 'thresholdCyan' | 'thresholdOrange' | 'thresholdRed';
 
 export const THRESHOLD_COLORS: Record<ThresholdKey, string> = {
   thresholdGreen: '#2e7d32',

@@ -4,10 +4,11 @@ import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import SellIcon from '@mui/icons-material/Sell';
 import { useRef } from 'react';
 
-import type { TickerDTO, TickerLatestDTO } from '../../../types/stock/ticker.types';
+import type { TickerLatestDTO } from '../../../types/stock/ticker.types';
 import TimeAgo from '../shared/TimeAgo';
 import ThresholdMini from './ThresholdMini';
 import { THRESHOLD_COLORS } from '../../../constants/stockUI';
+import type { ThresholdKey } from '../../../constants/stockUI';
 
 function getBorderStatus(ticker: TickerLatestDTO): {
   color?: string;
@@ -33,10 +34,12 @@ export default function TickerCard({
   ticker,
   onZoom,
   onTrade,
+  onChangeThreshold
 }: {
   ticker: TickerLatestDTO;
   onZoom: (id: string, anchorEl: HTMLElement | null) => void;
   onTrade: (id: string, side: 'buy' | 'sell') => void;
+  onChangeThreshold: (tickerId: string, key: ThresholdKey, value: number) => void;
 }) {
   const cardRef = useRef<HTMLDivElement | null>(null);
 
@@ -117,7 +120,7 @@ export default function TickerCard({
               { key: 'thresholdRed', value: ticker.thresholdRed },
             ]}
             height={120}
-            onChangeThreshold={(key, value) => { console.log('change threshold', key, value) }}
+            onChangeThreshold={(key, value) => onChangeThreshold(ticker.id, key, value)}
           />
         </Box>
 

@@ -5,5 +5,5 @@ export type PriceUpdateDTO = {
   bid?: number;
   ask?: number;
   volume?: number;
-  tradeDatetime: Date;
+  tradeDatetime: string;
 };

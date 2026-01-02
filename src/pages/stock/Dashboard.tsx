@@ -5,164 +5,20 @@ import StockShell from '../../components/stock/layout/StockShell';
 import FilterBar from '../../components/stock/dashboard/FilterBar';
 import RightFavorableBar from '../../components/stock/dashboard/RightFavorableBar';
 import TickerGrid from '../../components/stock/dashboard/TickerGrid';
-
-import type { TickerLatestDTO, TickerSnapshot } from '../../types/stock/ticker.types';
+import type { TickerLatestDTO } from '../../types/stock/ticker.types';
 import { applyFilters, defaultStockFilters } from '../../utils/stock/filter';
 import { favorabilityScore } from '../../utils/stock/favorability';
 import TickerCardTooltip from '../../components/stock/dashboard/TickerDetailTooltip';
 import { listTickerLatest } from '../../services/stock/ticker-api';
 import { connectPricesWs } from '../../services/stock/prices-ws';
 import type { PriceUpdateDTO } from '../../types/stock/price-update.types';
-
-
-const DUMMY_TICKERS: TickerSnapshot[] = [
-  {
-    id: '1',
-    symbol: 'ENB.TO',
-    name: 'Enbridge',
-    market: 'canada',
-    stockClass: 'dividend',
-    bucket: 'core',
-    currentPrice: 65.84,
-    avgBookCost: 62.1,
-    profit: 3.74,
-    thresholdGreen: 70,
-    thresholdCyan: 67,
-    thresholdOrange: 60,
-    thresholdRed: 58,
-    updateDatetime: Date.now() - 60_000,
-  },
-  {
-    id: '2',
-    symbol: 'BCE.TO',
-    name: 'BCE',
-    market: 'canada',
-    stockClass: 'dividend',
-    bucket: 'core',
-    currentPrice: 102.03,
-    avgBookCost: 98.5,
-    profit: 3.53,
-    thresholdGreen: 107,
-    thresholdCyan: 104,
-    thresholdOrange: 95,
-    thresholdRed: 89,
-    updateDatetime: Date.now() - 5 * 60_000,
-  },
-  {
-    id: '3',
-    symbol: 'AAPL',
-    name: 'Apple',
-    market: 'usa',
-    stockClass: 'trade',
-    bucket: 'once',
-    currentPrice: 245.12,
-    avgBookCost: 210.0,
-    profit: 35.12,
-    thresholdGreen: 260,
-    thresholdCyan: 248,
-    thresholdOrange: 230,
-    thresholdRed: 222,
-    updateDatetime: Date.now() - 12 * 60_000,
-  },
-  {
-    id: '4',
-    symbol: 'TCS.NS',
-    name: 'Tata Consultancy Services',
-    market: 'india',
-    stockClass: 'trade',
-    bucket: 'avoid',
-    currentPrice: 398.0,
-    avgBookCost: 420.0,
-    profit: -22.0,
-    thresholdGreen: 470,
-    thresholdCyan: 421,
-    thresholdOrange: 380,
-    thresholdRed: 360,
-    updateDatetime: Date.now() - 2 * 60_000,
-  },
-  {
-    id: '5',
-    symbol: 'AEM.TO',
-    name: 'Agnico Eagle Mines Limited',
-    market: 'canada',
-    stockClass: 'trade',
-    bucket: 'core',
-    currentPrice: 247.68,
-    avgBookCost: 244.96,
-    profit: 2.72,
-    thresholdGreen: 249.26,
-    thresholdCyan: 248,
-    thresholdOrange: 244.06,
-    thresholdRed: 242.50,
-    updateDatetime: Date.now() - 2 * 60_000,
-  },
-  {
-    id: '6',
-    symbol: 'BB.TO',
-    name: 'BlackBerry Limited',
-    market: 'canada',
-    stockClass: 'trade',
-    bucket: 'core',
-    currentPrice: 5.46,
-    avgBookCost: 5.36,
-    profit: 0.10,
-    thresholdGreen: 6.10,
-    thresholdCyan: 6.01,
-    thresholdOrange: 5.26,
-    thresholdRed: 4.80,
-    updateDatetime: Date.now() - 2 * 60_000,
-  },
-  {
-    id: '7',
-    symbol: 'CM.TO',
-    name: 'CIBC Bank',
-    market: 'canada',
-    stockClass: 'dividend',
-    bucket: 'watch',
-    currentPrice: 126.61,
-    avgBookCost: 69.71,
-    profit: 56.90,
-    thresholdGreen: 128.34,
-    thresholdCyan: 127.23,
-    thresholdOrange: 123.34,
-    thresholdRed: 115.23,
-    updateDatetime: Date.now() - 2 * 60_000,
-  },
-  {
-    id: '8',
-    symbol: 'CNR.TO',
-    name: 'Canadian National Railway Co.',
-    market: 'canada',
-    stockClass: 'trade',
-    bucket: 'once',
-    currentPrice: 134.95,
-    avgBookCost: 134.70,
-    profit: 0.25,
-    thresholdGreen: 138.23,
-    thresholdCyan: 137.15,
-    thresholdOrange: 132.45,
-    thresholdRed: 130.23,
-    updateDatetime: Date.now() - 2 * 60_000,
-  },
-  {
-    id: '9',
-    symbol: 'CSH.UN.TO',
-    name: 'Chartwell Retirement Residences',
-    market: 'canada',
-    stockClass: 'trade',
-    bucket: 'watch',
-    currentPrice: 20.03,
-    avgBookCost: 20.40,
-    profit: -0.37,
-    thresholdGreen: 21.30,
-    thresholdCyan: 21.01,
-    thresholdOrange: 19.80,
-    thresholdRed: 18.70,
-    updateDatetime: Date.now() - 2 * 60_000,
-  },
-];
+import { patchTickerThresholds } from '../../services/stock/ticker-api';
+import { useSnackbar } from '../../components/common/SnackbarProvider';
+import type { ThresholdKey } from '../../constants/stockUI';
 
 export default function Dashboard() {
+  const { showSnackbar } = useSnackbar();
+
   const [filters, setFilters] = useState(defaultStockFilters);
   const [zoomTickerId, setZoomTickerId] = useState<string | null>(null);
   const [zoomAnchorEl, setZoomAnchorEl] = useState<HTMLElement | null>(null);
@@ -224,9 +80,8 @@ export default function Dashboard() {
     };
   }, []);
 
-
   const visibleTickers = useMemo(() => {
-    const filtered = applyFilters(DUMMY_TICKERS, filters);
+    const filtered = applyFilters(tickers, filters);
     // temporary sort logic
     return filtered.sort((a, b) => favorabilityScore(b) - favorabilityScore(a));
   }, [filters]);
@@ -250,6 +105,48 @@ export default function Dashboard() {
     console.log('trade', { id, side });
   };
 
+  const onChangeThreshold = async (tickerId: string, key: ThresholdKey, value: number) => {
+    // 1) optimistic update
+    let previous: number | undefined;
+
+    setTickerMap((prevMap) => {
+      const next = new Map(prevMap);
+
+      // your map is keyed by symbol, so we need to locate the ticker by id
+      for (const [sym, t] of next.entries()) {
+        if (t.id === tickerId) {
+          previous = (t as any)[key] as number | undefined;
+          next.set(sym, { ...t, [key]: value } as any);
+          break;
+        }
+      }
+
+      return next;
+    });
+
+    // 2) persist to backend
+    try {
+      await patchTickerThresholds(tickerId, { [key]: value } as any);
+      // optional: show a tiny success toast or skip to avoid spam
+      // showSnackbar('Threshold updated', { severity: 'success' });
+    } catch (e) {
+      // rollback on failure
+      setTickerMap((prevMap) => {
+        const next = new Map(prevMap);
+        for (const [sym, t] of next.entries()) {
+          if (t.id === tickerId) {
+            next.set(sym, { ...t, [key]: previous } as any);
+            break;
+          }
+        }
+        return next;
+      });
+
+      showSnackbar('Failed to save threshold. Rolled back.', { severity: 'error' });
+      console.error(e);
+    }
+  };
+
   return (
     <StockShell right={({ closeRight }) => <RightFavorableBar onClose={closeRight} />} >
       <Typography variant="h5" sx={{ fontWeight: 500, mb: 2 }}>
@@ -260,7 +157,7 @@ export default function Dashboard() {
         <FilterBar value={filters} onChange={setFilters} />
       </Box>
 
-      <TickerGrid tickers={tickers} onZoom={onZoom} onTrade={onTrade} />
+      <TickerGrid tickers={tickers} onZoom={onZoom} onTrade={onTrade} onChangeThreshold={onChangeThreshold} />
 
       <TickerCardTooltip
         open={Boolean(zoomTickerId)}

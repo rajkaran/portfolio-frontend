@@ -12,7 +12,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useEffect, useMemo, useState } from 'react';
 import { useTheme } from '@mui/material/styles';
-import type { TickerSnapshot } from '../../../types/stock/ticker.types';
+import type { TickerLatestDTO } from '../../../types/stock/ticker.types';
 
 export default function TickerCardTooltip({
   open,
@@ -22,7 +22,7 @@ export default function TickerCardTooltip({
 }: {
   open: boolean;
   anchorEl: HTMLElement | null;
-  ticker: TickerSnapshot | null;
+  ticker: TickerLatestDTO | null;
   onClose: () => void;
 }) {
   const isSmall = useMediaQuery('(max-width:768px)', { noSsr: true });
@@ -89,7 +89,7 @@ export default function TickerCardTooltip({
             {ticker.symbol}
           </Typography>
           <Typography variant="caption" sx={{ opacity: 0.75 }}>
-            {ticker.name}
+            {ticker.companyName}
           </Typography>
         </Box>
 
@@ -102,7 +102,7 @@ export default function TickerCardTooltip({
 
       <Box sx={{ p: 1.25 }}>
         <Typography variant="body2">
-          Current: <b>${ticker.currentPrice.toFixed(2)}</b>
+          Current: <b>${ticker.lastPrice.toFixed(2)}</b>
         </Typography>
 
         <Box

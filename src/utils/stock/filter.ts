@@ -1,4 +1,4 @@
-import type { Market, StockClass, TickerSnapshot } from '../../types/stock/ticker.types';
+import type { Market, StockClass, TickerLatestDTO } from '../../types/stock/ticker.types';
 
 export type SortBy = 'category' | 'mostTraded' | 'gainers' | 'closeToThresholds';
 
@@ -16,7 +16,7 @@ export const defaultStockFilters: StockFilters = {
   search: '',
 };
 
-export function applyFilters(tickers: TickerSnapshot[], filters: StockFilters): TickerSnapshot[] {
+export function applyFilters(tickers: TickerLatestDTO[], filters: StockFilters): TickerLatestDTO[] {
   const search = filters.search.trim().toLowerCase();
 
   return tickers.filter((t) => {

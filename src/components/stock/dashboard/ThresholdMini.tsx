@@ -50,14 +50,14 @@ export default function ThresholdMini({
     return map;
   }, [thresholds]);
 
-  useEffect(() => {
-    if (!editingKey) return;
+  // useEffect(() => {
+  //   if (!editingKey) return;
 
-    const current = valueByKey.get(editingKey);
-    setDraft(typeof current === 'number' ? current.toFixed(2) : '');
+  //   const current = valueByKey.get(editingKey);
+  //   setDraft(typeof current === 'number' ? current.toFixed(2) : '');
 
-    setTimeout(() => inputRef.current?.focus(), 0);
-  }, [editingKey, valueByKey]);
+  //   setTimeout(() => inputRef.current?.focus(), 0);
+  // }, [editingKey, valueByKey]);
 
   if (numeric.length === 0) {
     return (
@@ -229,7 +229,11 @@ export default function ThresholdMini({
                 alignItems: 'center',
                 zIndex: 3,
               }}
-              onDoubleClick={() => setEditingKey(l.key)}
+              onDoubleClick={() => {
+                setEditingKey(l.key);
+                setDraft(l.value.toFixed(2)); // initialize from the line you're editing
+                setTimeout(() => inputRef.current?.focus(), 0);
+              }}
             >
               {editingKey === l.key ? (
                 <Box

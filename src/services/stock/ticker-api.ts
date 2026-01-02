@@ -1,4 +1,4 @@
-import type { Market, StockClass, TickerDTO, CreateTickerDTO, UpdateTickerDTO } from '../../types/stock/ticker.types';
+import type { Market, StockClass, TickerDTO, CreateTickerDTO, UpdateTickerDTO, ThresholdPatch } from '../../types/stock/ticker.types';
 import { loopbackApi } from "./loopback-api";
 
 export async function listTickers(params?: { market?: Market; stockClass?: StockClass }) {
@@ -73,7 +73,6 @@ export async function listTickerLatest() {
   return res.data;
 }
 
-
 export async function createTicker(body: CreateTickerDTO) {
   const res = await loopbackApi.post<TickerDTO>('/tickers', body);
   return res.data;
@@ -81,6 +80,10 @@ export async function createTicker(body: CreateTickerDTO) {
 
 export async function updateTicker(id: string, body: UpdateTickerDTO) {
   await loopbackApi.patch(`/tickers/${id}`, body);
+}
+
+export async function patchTickerThresholds(tickerId: string, patch: ThresholdPatch) {
+  await loopbackApi.patch(`/tickers/${tickerId}`, patch);
 }
 
 export async function deleteTicker(id: string) {
