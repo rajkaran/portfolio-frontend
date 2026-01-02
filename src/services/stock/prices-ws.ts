@@ -2,7 +2,7 @@ import type { PriceUpdateDTO } from '../../types/stock/price-update.types';
 
 type Msg =
   | { type: 'hello'; data: any }
-  | { type: 'priceUpdate'; data: PriceUpdateDTO };
+  | { type: 'priceBatch'; data: PriceUpdateDTO[] };
 
 export function connectPricesWs(opts: {
   onPriceUpdate: (u: PriceUpdateDTO) => void;
@@ -41,7 +41,10 @@ export function connectPricesWs(opts: {
     ws.onmessage = (ev) => {
       try {
         const msg: Msg = JSON.parse(ev.data);
-        if (msg.type === 'priceUpdate') opts.onPriceUpdate(msg.data);
+        // if (msg.type === 'priceUpdate') opts.onPriceUpdate(msg.data);
+        if (msg.type === 'priceBatch') {
+          for (const u of msg.data) opts.onPriceUpdate(u);
+        }
       } catch {
         // ignore junk
       }

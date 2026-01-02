@@ -4,6 +4,7 @@ import Dashboard from './pages/stock/Dashboard';
 import GroceryList from './pages/grocery/GroceryList';
 import Setting from './pages/stock/Setting';
 import Ticker from './pages/stock/Ticker';
+import Trade from './pages/stock/Trade';
 
 function App() {
   return (
@@ -14,6 +15,7 @@ function App() {
         <Route path="/stock" element={<Dashboard />} />
         <Route path="/stock/setting" element={<Setting />} />
         <Route path="/stock/ticker" element={<Ticker />} />
+        <Route path="/stock/trade" element={<Trade />} />
 
         <Route path="/grocery" element={<GroceryList />} />
 

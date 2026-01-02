@@ -6,7 +6,7 @@ import FilterBar from '../../components/stock/dashboard/FilterBar';
 import RightFavorableBar from '../../components/stock/dashboard/RightFavorableBar';
 import TickerGrid from '../../components/stock/dashboard/TickerGrid';
 
-import type { TickerDTO, TickerLatestDTO, TickerSnapshot } from '../../types/stock/ticker.types';
+import type { TickerLatestDTO, TickerSnapshot } from '../../types/stock/ticker.types';
 import { applyFilters, defaultStockFilters } from '../../utils/stock/filter';
 import { favorabilityScore } from '../../utils/stock/favorability';
 import TickerCardTooltip from '../../components/stock/dashboard/TickerDetailTooltip';
