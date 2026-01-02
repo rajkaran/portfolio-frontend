@@ -15,7 +15,7 @@ type Props = {
 
 const NAV_ITEMS = [
   { label: 'Dashboard', to: '/stock', icon: <DashboardIcon fontSize="small" /> },
-  { label: 'Profits', to: '/stock/profits', icon: <AttachMoneyIcon fontSize="small" /> },
+  { label: 'Trades', to: '/stock/trade', icon: <AttachMoneyIcon fontSize="small" /> },
   { label: 'Tickers', to: '/stock/ticker', icon: <ListAltIcon fontSize="small" /> },
   { label: 'Alert Logs', to: '/stock/alert-logs', icon: <NotificationsActiveIcon fontSize="small" /> },
   { label: 'Settings', to: '/stock/setting', icon: <SettingsIcon fontSize="small" /> },

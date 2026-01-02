@@ -1,4 +1,3 @@
-import { Android } from '@mui/icons-material';
 import type { Market, StockClass, TickerDTO, CreateTickerDTO, UpdateTickerDTO } from '../../types/stock/ticker.types';
 import { loopbackApi } from "./loopback-api";
 
@@ -55,6 +54,9 @@ export async function listTickerLatest() {
       askPrice: true,
       volume: true,
       updateDatetime: true,
+
+      avgBookCost: true,
+      quantityHolding: true,
 
       thresholdGreen: true,
       thresholdCyan: true,

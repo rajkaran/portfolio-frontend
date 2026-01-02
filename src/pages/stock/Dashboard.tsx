@@ -190,24 +190,26 @@ export default function Dashboard() {
       wsHandle = connectPricesWs({
         onStatus: (s) => setWsConnected(s.connected),
         onPriceUpdate: (u: PriceUpdateDTO) => {
-          // normalize provider symbol -> your DB symbol (strip .TO)
-          const normalizedSymbol = u.symbol.endsWith('.TO') ? u.symbol.replace(/\.TO$/, '') : u.symbol;
-
           setTickerMap((prev) => {
-            const existing = prev.get(normalizedSymbol);
+            const existing = prev.get(u.symbol);
             if (!existing) return prev;
 
+            let totalReturn = 0;
+            if (existing.quantityHolding && existing.quantityHolding > 0) {
+              totalReturn = (u.last ?? existing.lastPrice) * existing.quantityHolding - (existing.avgBookCost ?? 0) * existing.quantityHolding;
+            }
+
             const next = new Map(prev);
-            next.set(normalizedSymbol, {
+            next.set(u.symbol, {
               ...existing,
               lastPrice: u.last ?? existing.lastPrice,
               bidPrice: u.bid ?? existing.bidPrice,
               askPrice: u.ask ?? existing.askPrice,
               volume: u.volume ?? existing.volume,
               updateDatetime: u.tradeDatetime,
-              avgBookCost: existing.avgBookCost ?? existing.lastPrice,
+              avgBookCost: existing.avgBookCost,
               quantityHolding: existing.quantityHolding ?? 0,
-              totalReturn: existing.totalReturn ?? 0,
+              totalReturn: totalReturn,
               symbolId: u.symbolId ?? existing.symbolId,
             });
             return next;
