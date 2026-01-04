@@ -71,6 +71,7 @@ export default function Dashboard() {
             askPrice: u.ask ?? existing.askPrice,
             volume: u.volume ?? existing.volume,
             updateDatetime: u.tradeDatetime,
+            tradeDatetime: u.tradeDatetime,
             totalReturn,
             symbolId: u.symbolId ?? existing.symbolId,
           });

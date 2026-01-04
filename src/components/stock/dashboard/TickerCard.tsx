@@ -167,7 +167,7 @@ export default function TickerCard({
           {/* Right: TimeAgo */}
           <Box sx={{ justifySelf: 'end' }}>
             {/* do the subtraction to get seconds */}
-            {/* <TimeAgo updatedAt={ticker.updateDatetime} /> */}
+            <TimeAgo updatedAtIso={ticker.tradeDatetime} />
           </Box>
         </Box>
 

@@ -33,6 +33,7 @@ export type TickerLatestDTO = {
   askPrice: number;
   volume: number;
   updateDatetime: string;
+  tradeDatetime: string;
 
   avgBookCost?: number,
   quantityHolding?: number,

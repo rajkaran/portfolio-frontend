@@ -13,7 +13,11 @@ function formatTimeAgo(updatedAt: number): string {
   return `${day}d ago`;
 }
 
-export default function TimeAgo({ updatedAt }: { updatedAt: number }) {
+export default function TimeAgo({ updatedAtIso }: { updatedAtIso: string }) {
+  if (!updatedAtIso) return null;
+  const t = Date.parse(updatedAtIso);
+  if (!Number.isFinite(t)) return null;
+
   return (
     <Typography
       variant="caption"
@@ -25,7 +29,7 @@ export default function TimeAgo({ updatedAt }: { updatedAt: number }) {
         display: 'inline-block', // key: prevents extra line box height
       }}
     >
-      {formatTimeAgo(updatedAt)}
+      {formatTimeAgo(t)}
     </Typography>
   );
 }
