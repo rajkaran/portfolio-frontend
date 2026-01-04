@@ -5,8 +5,8 @@ import StockShell from '../../components/stock/layout/StockShell';
 import FilterBar from '../../components/stock/dashboard/FilterBar';
 import RightFavorableBar from '../../components/stock/dashboard/RightFavorableBar';
 import TickerGrid from '../../components/stock/dashboard/TickerGrid';
-import type { TickerLatestDTO } from '../../types/stock/ticker.types';
-import { applyFilters, defaultStockFilters } from '../../utils/stock/filter';
+import { defaultStockFilters, type StockFilters, type TickerLatestDTO } from '../../types/stock/ticker.types';
+import { applyFilters } from '../../utils/stock/filter';
 import { favorabilityScore } from '../../utils/stock/favorability';
 import TickerCardTooltip from '../../components/stock/dashboard/TickerDetailTooltip';
 import { listTickerLatest } from '../../services/stock/ticker-api';
@@ -30,61 +30,73 @@ export default function Dashboard() {
   const tickers = useMemo(() => Array.from(tickerMap.values()), [tickerMap]);
 
   useEffect(() => {
-    let wsHandle: { close: () => void } | null = null;
     let cancelled = false;
 
     (async () => {
-      // 1) initial snapshot
-      const rows: TickerLatestDTO[] = await listTickerLatest();
+      const rows = await listTickerLatest(filters.market, filters.stockClass);
       if (cancelled) return;
 
       const map = new Map<string, TickerLatestDTO>();
       for (const t of rows) map.set(t.symbol, t);
       setTickerMap(map);
-
-      // 2) websocket updates
-      wsHandle = connectPricesWs({
-        onStatus: (s) => setWsConnected(s.connected),
-        onPriceUpdate: (u: PriceUpdateDTO) => {
-          setTickerMap((prev) => {
-            const existing = prev.get(u.symbol);
-            if (!existing) return prev;
-
-            let totalReturn = 0;
-            if (existing.quantityHolding && existing.quantityHolding > 0) {
-              totalReturn = (u.last ?? existing.lastPrice) * existing.quantityHolding - (existing.avgBookCost ?? 0) * existing.quantityHolding;
-            }
-
-            const next = new Map(prev);
-            next.set(u.symbol, {
-              ...existing,
-              lastPrice: u.last ?? existing.lastPrice,
-              bidPrice: u.bid ?? existing.bidPrice,
-              askPrice: u.ask ?? existing.askPrice,
-              volume: u.volume ?? existing.volume,
-              updateDatetime: u.tradeDatetime,
-              avgBookCost: existing.avgBookCost,
-              quantityHolding: existing.quantityHolding ?? 0,
-              totalReturn: totalReturn,
-              symbolId: u.symbolId ?? existing.symbolId,
-            });
-            return next;
-          });
-        },
-      });
     })().catch(console.error);
 
     return () => {
       cancelled = true;
-      wsHandle?.close();
     };
+  }, [filters.market, filters.stockClass]);
+
+  useEffect(() => {
+    const wsHandle = connectPricesWs({
+      onStatus: (s) => setWsConnected(s.connected),
+      onPriceUpdate: (u: PriceUpdateDTO) => {
+        setTickerMap((prev) => {
+          const existing = prev.get(u.symbol);
+          if (!existing) return prev; // ignore tickers not in current snapshot
+
+          const next = new Map(prev);
+          const last = u.last ?? existing.lastPrice;
+
+          let totalReturn = 0;
+          if (existing.quantityHolding && existing.quantityHolding > 0) {
+            totalReturn =
+              last * existing.quantityHolding -
+              (existing.avgBookCost ?? 0) * existing.quantityHolding;
+          }
+
+          next.set(u.symbol, {
+            ...existing,
+            lastPrice: last,
+            bidPrice: u.bid ?? existing.bidPrice,
+            askPrice: u.ask ?? existing.askPrice,
+            volume: u.volume ?? existing.volume,
+            updateDatetime: u.tradeDatetime,
+            totalReturn,
+            symbolId: u.symbolId ?? existing.symbolId,
+          });
+
+          return next;
+        });
+      },
+    });
+
+    return () => wsHandle.close();
   }, []);
 
   const visibleTickers = useMemo(() => {
     const filtered = applyFilters(tickers, filters);
-    // temporary sort logic
     return filtered.sort((a, b) => favorabilityScore(b) - favorabilityScore(a));
-  }, [filters]);
+  }, [tickers, filters]);
+
+  const onFiltersChange = (next: StockFilters) => {
+    const marketChanged = next.market !== filters.market;
+    const classChanged = next.stockClass !== filters.stockClass;
+
+    if (marketChanged || classChanged) {
+      next = { ...next, symbols: [] };
+    }
+    setFilters(next);
+  };
 
   const zoomTicker = useMemo(() => {
     if (!zoomTickerId) return null;
@@ -159,17 +171,12 @@ export default function Dashboard() {
       </Box>
 
       <Box>
-        <FilterBar value={filters} onChange={setFilters} />
+        <FilterBar value={filters} onChange={onFiltersChange} options={tickers} />
       </Box>
 
-      <TickerGrid tickers={tickers} onZoom={onZoom} onTrade={onTrade} onChangeThreshold={onChangeThreshold} />
+      <TickerGrid tickers={visibleTickers} onZoom={onZoom} onTrade={onTrade} onChangeThreshold={onChangeThreshold} />
 
-      <TickerCardTooltip
-        open={Boolean(zoomTickerId)}
-        anchorEl={zoomAnchorEl}
-        ticker={zoomTicker}
-        onClose={closeZoom}
-      />
+      <TickerCardTooltip open={Boolean(zoomTickerId)} anchorEl={zoomAnchorEl} ticker={zoomTicker} onClose={closeZoom} />
 
     </StockShell>
   );

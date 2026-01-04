@@ -1,18 +1,39 @@
-import { Box, FormControl, InputLabel, MenuItem, Select, TextField } from '@mui/material';
-import type { StockFilters } from '../../../utils/stock/filter';
-import type { Market, StockClass } from '../../../types/stock/ticker.types';
-import type { SortBy } from '../../../utils/stock/filter';
+import { Box, FormControl, InputLabel, MenuItem, Select } from '@mui/material';
+import { isDefined } from '../../../utils/stock/filter';
+import type { SortBy, StockFilters, TickerLatestDTO, TickerOption } from '../../../types/stock/ticker.types';
+import { MarketSelect } from '../shared/MarketSelect';
+import { StockClassSelect } from '../shared/StockClassSelect';
+import { TickerAutosuggest } from '../shared/TickerAutosuggest';
 
 export default function FilterBar({
   value,
   onChange,
+  options,
+  loading,
 }: {
   value: StockFilters;
   onChange: (next: StockFilters) => void;
+  options: TickerLatestDTO[];     // candidates (already loaded)
+  loading?: boolean;
 }) {
   const set = <K extends keyof StockFilters>(key: K, v: StockFilters[K]) => {
     onChange({ ...value, [key]: v });
   };
+
+  // Convert TickerLatestDTO -> TickerOption
+  const optionList: TickerOption[] = options.map(o => ({
+    id: o.id,
+    symbol: o.symbol,
+    companyName: o.companyName,
+    bucket: o.bucket,
+  }));
+
+  // Map options by symbol for quick lookup
+  const bySymbol = new Map(optionList.map(o => [o.symbol, o]));
+
+  const selectedTickers: TickerOption[] = value.symbols
+    .map(sym => bySymbol.get(sym))
+    .filter(isDefined);
 
   return (
     <Box
@@ -20,59 +41,32 @@ export default function FilterBar({
         display: 'grid',
         gap: 1.5,
         alignItems: 'center',
-        // Mobile: 2 columns, Desktop: 4 columns (search fills last column)
         gridTemplateColumns: {
           xs: '1fr 1fr',
           md: '160px 160px 220px 1fr',
         },
       }}
     >
-      <FormControl size="small" sx={{ minWidth: 0 }}>
-        <InputLabel>Market</InputLabel>
-        <Select
-          label="Market"
-          value={value.market}
-          onChange={(e) => set('market', e.target.value as Market | 'canada')}
-        >
-          <MenuItem value="canada">Canada</MenuItem>
-          <MenuItem value="usa">USA</MenuItem>
-          <MenuItem value="india">India</MenuItem>
-        </Select>
-      </FormControl>
-
-      <FormControl size="small" sx={{ minWidth: 0 }}>
-        <InputLabel>Class</InputLabel>
-        <Select
-          label="Class"
-          value={value.stockClass}
-          onChange={(e) => set('stockClass', e.target.value as StockClass | 'trade')}
-        >
-          <MenuItem value="dividend">Dividend</MenuItem>
-          <MenuItem value="trade">Trade</MenuItem>
-          <MenuItem value="longTerm">Long Term</MenuItem>
-        </Select>
-      </FormControl>
+      <MarketSelect value={value.market} onChange={(v) => set('market', v)} sx={{ minWidth: 0 }} />
+      <StockClassSelect value={value.stockClass} onChange={(v) => set('stockClass', v)} sx={{ minWidth: 0 }} />
 
       <FormControl size="small" sx={{ minWidth: 0 }}>
         <InputLabel>Sort by</InputLabel>
-        <Select
-          label="Sort by"
-          value={value.sortBy}
-          onChange={(e) => set('sortBy', e.target.value as SortBy)}
-        >
-          <MenuItem value="category">Category</MenuItem>
-          <MenuItem value="mostTraded">Most traded</MenuItem>
-          <MenuItem value="gainers">Gainers</MenuItem>
-          <MenuItem value="closeToThresholds">Close to thresholds</MenuItem>
+        <Select label="Sort by" value={value.sortBy} onChange={(e) => set('sortBy', e.target.value as SortBy)}>
+          <MenuItem value="az">A → Z</MenuItem>
+          <MenuItem value="za">Z → A</MenuItem>
+          <MenuItem value="bucket">Bucket (core→watch→once→avoid)</MenuItem>
+          <MenuItem value="favorability">Favorability</MenuItem>
         </Select>
       </FormControl>
 
-      <TextField
-        size="small"
-        label="Search"
-        value={value.search}
-        onChange={(e) => set('search', e.target.value)}
-        sx={{ minWidth: 0 }}
+      <TickerAutosuggest
+        tickers={optionList}
+        value={selectedTickers}
+        onChange={(next) => set('symbols', next.map((t: any) => t.symbol))}
+        disabled={loading}
+        label="Tickers"
+        placeholder="Type symbol or company name"
       />
     </Box>
   );

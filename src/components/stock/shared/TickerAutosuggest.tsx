@@ -1,5 +1,5 @@
 import { Autocomplete, Box, Checkbox, Chip, TextField, Typography } from '@mui/material';
-import type { TickerDTO, Bucket } from '../../../types/stock/ticker.types';
+import type { TickerOption, Bucket } from '../../../types/stock/ticker.types';
 
 function bucketLabel(b?: Bucket | string) {
   if (!b) return '—';
@@ -9,9 +9,9 @@ function bucketLabel(b?: Bucket | string) {
 }
 
 export function TickerAutosuggest(props: {
-  tickers: TickerDTO[];
-  value: TickerDTO[];
-  onChange: (next: TickerDTO[]) => void;
+  tickers: TickerOption[];
+  value: TickerOption[];
+  onChange: (next: TickerOption[]) => void;
   label?: string;
   placeholder?: string;
   disabled?: boolean;

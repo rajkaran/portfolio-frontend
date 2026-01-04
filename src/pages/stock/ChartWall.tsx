@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Box, Typography } from '@mui/material';
 
 import StockShell from '../../components/stock/layout/StockShell';
-import type { Bucket, Market, StockClass, TickerDTO } from '../../types/stock/ticker.types';
+import type { Bucket, Market, StockClass, TickerDTO, TickerOption } from '../../types/stock/ticker.types';
 import type { PriceUpdateDTO } from '../../types/stock/price-update.types';
 
 import { listTickers } from '../../services/stock/ticker-api';
@@ -15,6 +15,7 @@ import { ChartGrid } from '../../components/stock/chartwall/ChartGrid';
 
 import { buildChartWallQueryString, readChartWallQuery } from '../../utils/stock/chartwallUrl';
 import type { Latest, PerTab, RotateSec } from '../../types/stock/chart.type';
+import { isDefined } from '../../utils/stock/filter';
 
 function chunk<T>(arr: T[], size: number): T[][] {
   if (size <= 0) return [arr];
@@ -43,6 +44,7 @@ export default function ChartWall() {
   const subsRef = useRef(new Map<string, Set<(p: Latest) => void>>());
   const seriesSubsRef = useRef(new Map<string, Set<() => void>>());
   const inFlightRef = useRef(new Set<string>());
+  const tickerCacheRef = useRef(new Map<string, TickerDTO[]>());
 
   const loadedDayRef = useRef<string>('');
   const loadedTzRef = useRef<string>('');
@@ -113,7 +115,7 @@ export default function ChartWall() {
     });
 
     const current = window.location.search.replace(/^\?/, '');
-    if (current === qs) return; // ✅ idempotent under StrictMode
+    if (current === qs) return; // idempotent under StrictMode
 
     window.history.replaceState(null, '', `${window.location.pathname}?${qs}`);
 
@@ -121,12 +123,17 @@ export default function ChartWall() {
 
   // ---- load tickers list for dropdown ----
   useEffect(() => {
+    const key = `${market}|${stockClass}`;
+    const cached = tickerCacheRef.current.get(key);
+    if (cached) { setAllTickers(cached); return; }
+
     let alive = true;
     setLoadingTickers(true);
 
-    listTickers()
+    listTickers({ market, stockClass })
       .then((data: TickerDTO[]) => {
         if (!alive) return;
+        tickerCacheRef.current.set(key, data);
         setAllTickers(data);
       })
       .finally(() => {
@@ -137,7 +144,7 @@ export default function ChartWall() {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [market, stockClass]);
 
   // ---- connect WS once ----
   useEffect(() => {
@@ -195,6 +202,13 @@ export default function ChartWall() {
     };
   }, []);
 
+  const toOption = (t: TickerDTO): TickerOption => ({
+    id: t.id,
+    symbol: t.symbol,
+    companyName: t.companyName,
+    bucket: t.bucket,
+  });
+
   // ---- filtering for dropdown ----
   const filteredTickers = useMemo(() => {
     return allTickers.filter((t) => {
@@ -202,16 +216,22 @@ export default function ChartWall() {
       if (!t.stockClasses?.includes(stockClass as any)) return false;
       if (!buckets.includes(t.bucket)) return false;
       return true;
-    });
+    })
+      .map(toOption);
   }, [allTickers, market, stockClass, buckets]);
+
+  useEffect(() => {
+    const allowed = new Set(filteredTickers.map(t => t.symbol));
+    setSelectedSymbols(prev => prev.filter(sym => allowed.has(sym)));
+  }, [filteredTickers]);
 
   // Selecting tickers
   const selectedTickers = useMemo(() => {
     const bySym = new Map(allTickers.map(t => [t.symbol, t]));
-    return selectedSymbols.map(s => bySym.get(s)).filter(Boolean) as TickerDTO[];
+    return selectedSymbols.map(s => bySym.get(s)).filter(isDefined).map(toOption);
   }, [selectedSymbols, allTickers]);
 
-  const onSelectedTickers = (tickers: TickerDTO[]) => {
+  const onSelectedTickers = (tickers: TickerOption[]) => {
     setSelectedSymbols(tickers.map(t => t.symbol));
   };
 

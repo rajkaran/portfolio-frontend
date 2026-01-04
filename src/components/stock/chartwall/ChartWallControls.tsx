@@ -1,5 +1,5 @@
 import { Box, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
-import type { Market, StockClass, Bucket, TickerDTO } from '../../../types/stock/ticker.types';
+import type { Market, StockClass, Bucket, TickerOption } from '../../../types/stock/ticker.types';
 import { TickerAutosuggest } from '../shared/TickerAutosuggest';
 import type { PerTab, RotateSec } from '../../../types/stock/chart.type';
 import { SegmentedToggleButton } from '../../common/SegmentedToggleButton';
@@ -26,9 +26,9 @@ export function ChartWallControls(props: {
   rotateSec: RotateSec;
   onRotateSec: (v: RotateSec) => void;
 
-  filteredTickers: TickerDTO[];
-  selectedTickers: TickerDTO[];
-  onSelectedTickers: (v: TickerDTO[]) => void;
+  filteredTickers: TickerOption[];
+  selectedTickers: TickerOption[];
+  onSelectedTickers: (v: TickerOption[]) => void;
 
   loadingTickers?: boolean;
 }) {

@@ -36,9 +36,20 @@ export async function listTickers(params?: { market?: Market; stockClass?: Stock
   return res.data;
 }
 
-export async function listTickerLatest() {
+export async function listTickerLatest(market?: Market, stockClass?: StockClass) {
+  const and: Array<Record<string, unknown>> = [];
+
+  if (market) and.push({ market: market });
+
+  if (stockClass) {
+    // More explicit for array fields (stockClasses is string[])
+    and.push({ stockClasses: { inq: [stockClass] } });
+  }
+
+  and.push({ isActive: true });
+
   const filter = {
-    where: { and: [{ isActive: true }, { thresholdGreen: { exists: true } }] },
+    where: and.length ? { and } : undefined,
     fields: {
       id: true,
       symbol: true,
@@ -52,7 +63,6 @@ export async function listTickerLatest() {
       lastPrice: true,
       bidPrice: true,
       askPrice: true,
-      volume: true,
       updateDatetime: true,
 
       avgBookCost: true,

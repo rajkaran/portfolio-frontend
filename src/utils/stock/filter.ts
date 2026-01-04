@@ -1,32 +1,20 @@
-import type { Market, StockClass, TickerLatestDTO } from '../../types/stock/ticker.types';
-
-export type SortBy = 'category' | 'mostTraded' | 'gainers' | 'closeToThresholds';
-
-export type StockFilters = {
-  market: Market | 'canada';
-  stockClass: StockClass | 'trade';
-  sortBy: SortBy;
-  search: string;
-};
-
-export const defaultStockFilters: StockFilters = {
-  market: 'canada',
-  stockClass: 'trade',
-  sortBy: 'category',
-  search: '',
-};
+import type { StockFilters, TickerLatestDTO } from '../../types/stock/ticker.types';
 
 export function applyFilters(tickers: TickerLatestDTO[], filters: StockFilters): TickerLatestDTO[] {
-  const search = filters.search.trim().toLowerCase();
+  let out = tickers.filter(t =>
+    t.market === filters.market &&
+    (t.stockClasses?.includes(filters.stockClass) ?? false)
+  );
 
-  return tickers.filter((t) => {
-    // if (t.market !== filters.market) return false;
-    // if (t.stockClass !== filters.stockClass) return false;
+  if (filters.symbols.length) {
+    const set = new Set(filters.symbols.map(s => s.toUpperCase()));
+    out = out.filter(t => set.has(t.symbol.toUpperCase()));
+  }
 
-    // if (search) {
-    //   const hay = `${t.symbol} ${t.name}`.toLowerCase();
-    //   if (!hay.includes(search)) return false;
-    // }
-    return true;
-  });
+  return out;
 }
+
+export function isDefined<T>(x: T | undefined | null): x is T {
+  return x != null;
+}
+

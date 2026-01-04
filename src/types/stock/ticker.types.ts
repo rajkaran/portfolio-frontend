@@ -9,6 +9,14 @@ export type ThresholdPatch = Partial<{
   thresholdRed: number;
 }>;
 
+// input to the AutoSuggest for ticker
+export type TickerOption = {
+  id: string;
+  symbol: string;
+  companyName?: string;
+  bucket?: string;
+};
+
 export type TickerLatestDTO = {
   id: string;
   symbol: string;
@@ -34,6 +42,22 @@ export type TickerLatestDTO = {
   thresholdCyan: number;
   thresholdOrange: number;
   thresholdRed: number;
+};
+
+export type SortBy = 'az' | 'za' | 'bucket' | 'favorability';
+
+export type StockFilters = {
+  market: Market;
+  stockClass: StockClass;
+  sortBy: SortBy;
+  symbols: string[]; // e.g. ["WFG.TO", "SHOP.TO"]
+};
+
+export const defaultStockFilters: StockFilters = {
+  market: 'canada',
+  stockClass: 'trade',
+  sortBy: 'az',
+  symbols: [],
 };
 
 export type TickerDTO = {
