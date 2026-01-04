@@ -1,4 +1,4 @@
-import type { Market, StockClass, TickerDTO, CreateTickerDTO, UpdateTickerDTO, ThresholdPatch } from '../../types/stock/ticker.types';
+import type { Market, StockClass, TickerDTO, CreateTickerDTO, UpdateTickerDTO, ThresholdPatch, SymbolSuggestDTO } from '../../types/stock/ticker.types';
 import { loopbackApi } from "./loopback-api";
 
 export async function listTickers(params?: { market?: Market; stockClass?: StockClass }) {
@@ -81,6 +81,11 @@ export async function listTickerLatest(market?: Market, stockClass?: StockClass)
     params: { filter: JSON.stringify(filter) },
   });
 
+  return res.data;
+}
+
+export async function searchSymbols(params: {prefix: string; market: string; limit?: number}) {
+  const res = await loopbackApi.get<SymbolSuggestDTO[]>('/tickers/symbol-search', {params});
   return res.data;
 }
 

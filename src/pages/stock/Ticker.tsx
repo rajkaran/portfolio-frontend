@@ -1,31 +1,15 @@
 import {
-  Box,
-  Button,
-  Chip,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  FormControl,
-  InputLabel,
-  MenuItem,
-  Select,
-  Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
-  TextField,
-  IconButton,
-  Typography,
+  Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Stack,
+  Table, TableBody, TableCell, TableHead, TableRow, TextField, IconButton, Typography,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import { useEffect, useMemo, useState } from 'react';
+import { searchSymbols } from '../../services/stock/ticker-api';
 
-import type { Market, StockClass, Bucket, TickerDTO } from '../../types/stock/ticker.types';
+
+import type { Market, StockClass, Bucket, TickerDTO, SymbolSuggestDTO } from '../../types/stock/ticker.types';
 import { useSnackbar } from '../../components/common/SnackbarProvider';
 import {
   createTicker,
@@ -35,10 +19,15 @@ import {
 } from '../../services/stock/ticker-api';
 import StockShell from '../../components/stock/layout/StockShell';
 import { useTickerOptions } from '../../hooks/stock/useTickerOptions';
+import { SymbolAutosuggest } from '../../components/stock/ticker/SymbolAutosuggest';
+import { MarketSelect } from '../../components/stock/shared/MarketSelect';
+import { StockClassSelect } from '../../components/stock/shared/StockClassSelect';
+import { StockClassMultiSelect } from '../../components/stock/shared/StockClassMultiSelect';
+import { BucketSelect } from '../../components/stock/shared/BucketSelect';
 
 type FilterState = {
-  market: 'all' | Market;
-  stockClass: 'all' | StockClass;
+  market: Market;
+  stockClass: StockClass;
 };
 
 type FormState = {
@@ -64,7 +53,7 @@ export default function Ticker() {
   const { options, loading: optionsLoading } = useTickerOptions(true);
 
   // Page state
-  const [filters, setFilters] = useState<FilterState>({ market: 'all', stockClass: 'all' });
+  const [filters, setFilters] = useState<FilterState>({ market: 'canada', stockClass: 'trade' });
   const [rows, setRows] = useState<TickerDTO[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -72,6 +61,12 @@ export default function Ticker() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<TickerDTO | null>(null);
   const [form, setForm] = useState<FormState>(DEFAULT_FORM);
+
+  // autosugegst symbol state
+  const [symbolInput, setSymbolInput] = useState('');
+  const [symbolOptions, setSymbolOptions] = useState<SymbolSuggestDTO[]>([]);
+  const [symbolLoading, setSymbolLoading] = useState(false);
+  const [selectedSymbol, setSelectedSymbol] = useState<SymbolSuggestDTO | null>(null);
 
   // -------- Options helpers (key -> label) --------
   const marketItems = useMemo(
@@ -93,21 +88,34 @@ export default function Ticker() {
   const classLabel = (c: StockClass) => options?.stockClass?.[c] ?? c;
   const bucketLabel = (b: Bucket) => options?.bucket?.[b] ?? b;
 
-  // Normalize MUI Select multiple value (can be string in autofill edge case)
-  const normalizeMulti = (value: unknown): StockClass[] => {
-    if (Array.isArray(value)) return value as StockClass[];
-    if (typeof value === 'string') return value.split(',').map((x) => x.trim()) as StockClass[];
-    return [];
-  };
+  useEffect(() => {
+    if (!open) return; // your dialog open boolean
+    const q = symbolInput.trim();
+    if (!q) { setSymbolOptions([]); return; }
+
+    const t = setTimeout(async () => {
+      setSymbolLoading(true);
+      try {
+        const data = await searchSymbols({ prefix: q, market: form.market, limit: 10 });
+        setSymbolOptions(data);
+      } catch {
+        setSymbolOptions([]);
+      } finally {
+        setSymbolLoading(false);
+      }
+    }, 250);
+
+    return () => clearTimeout(t);
+  }, [open, symbolInput, form.market]);
 
   const fetchRows = async () => {
     setLoading(true);
     try {
       const data = await listTickers({
-        market: filters.market === 'all' ? undefined : filters.market,
-        stockClass: filters.stockClass === 'all' ? undefined : filters.stockClass,
+        market: filters.market,
+        stockClass: filters.stockClass,
       });
-      console.log('Fetched tickers:', data);
+
       setRows(data);
     } catch {
       showSnackbar('Failed to load tickers', { severity: 'error' });
@@ -124,6 +132,7 @@ export default function Ticker() {
   const openCreate = () => {
     setEditing(null);
     setForm(DEFAULT_FORM);
+    resetSymbolSearch();
     setOpen(true);
   };
 
@@ -137,10 +146,31 @@ export default function Ticker() {
       industry: t.industry,
       bucket: t.bucket,
     });
+
+    // make the autosuggest show the current symbol
+    setSelectedSymbol({
+      symbolId: 0,
+      symbol: t.symbol,
+      description: t.companyName,
+      lastPrice: null,
+    } as any);
+    setSymbolInput(t.symbol);
+    setSymbolOptions([]); // avoid showing stale search results
+
     setOpen(true);
   };
 
-  const closeDialog = () => setOpen(false);
+  const resetSymbolSearch = () => {
+    setSelectedSymbol(null);
+    setSymbolInput('');
+    setSymbolOptions([]);
+    setSymbolLoading(false);
+  };
+
+  const closeDialog = () => {
+    setOpen(false);
+    resetSymbolSearch();
+  };
 
   const canSave = useMemo(() => {
     // Prevent saving while options are still loading (avoids invalid/default keys)
@@ -219,41 +249,19 @@ export default function Ticker() {
             alignItems: 'center',
           }}
         >
-          <FormControl size="small">
-            <InputLabel>Market</InputLabel>
-            <Select
-              label="Market"
-              value={filters.market}
-              disabled={optionsLoading}
-              onChange={(e) => setFilters((p) => ({ ...p, market: e.target.value as FilterState['market'] }))}
-            >
-              <MenuItem value="all">All</MenuItem>
-              {marketItems.map((m) => (
-                <MenuItem key={m.value} value={m.value}>
-                  {m.label}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+          <MarketSelect
+            value={filters.market}
+            items={marketItems}
+            onChange={(v) => setFilters((p) => ({ ...p, market: v }))}
+            disabled={optionsLoading}
+          />
 
-          <FormControl size="small">
-            <InputLabel>Class</InputLabel>
-            <Select
-              label="Class"
-              value={filters.stockClass}
-              disabled={optionsLoading}
-              onChange={(e) =>
-                setFilters((p) => ({ ...p, stockClass: e.target.value as FilterState['stockClass'] }))
-              }
-            >
-              <MenuItem value="all">All</MenuItem>
-              {classItems.map((c) => (
-                <MenuItem key={c.value} value={c.value}>
-                  {c.label}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+          <StockClassSelect
+            value={filters.stockClass}
+            items={classItems}
+            onChange={(v) => setFilters((p) => ({ ...p, stockClass: v }))}
+            disabled={optionsLoading}
+          />
 
           <Box sx={{ justifySelf: { xs: 'start', md: 'end' }, opacity: 0.75 }}>
             {loading ? 'Loading…' : `${rows.length} tickers`}
@@ -312,17 +320,41 @@ export default function Ticker() {
         </Box>
 
         {/* Create/Edit Dialog */}
-        <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
+        <Dialog open={open} onClose={closeDialog} fullWidth maxWidth="sm">
           <DialogTitle>{editing ? `Edit ${editing.symbol}` : 'Add ticker'}</DialogTitle>
 
           <DialogContent sx={{ display: 'grid', gap: 1.5 }}>
-            <TextField
-              size="small"
-              label="Symbol"
+            <MarketSelect
+              value={form.market}
+              items={marketItems}
+              disabled={optionsLoading}
               sx={{ mt: 1 }}
-              value={form.symbol}
-              onChange={(e) => setForm((p) => ({ ...p, symbol: e.target.value }))}
+              onChange={(v) => {
+                setForm((p) => ({ ...p, market: v, symbol: '' }));
+
+                setSelectedSymbol(null);
+                setSymbolInput('');
+                setSymbolOptions([]);
+              }}
             />
+
+            <SymbolAutosuggest
+              value={selectedSymbol}
+              onChange={(opt) => {
+                setSelectedSymbol(opt);
+                setForm(p => ({
+                  ...p,
+                  symbol: opt?.symbol ?? '',
+                  // auto-fill companyName only if empty
+                  companyName: p.companyName?.trim() ? p.companyName : (opt?.description ?? ''),
+                }));
+              }}
+              inputValue={symbolInput}
+              onInputChange={setSymbolInput}
+              options={symbolOptions}
+              loading={symbolLoading}
+            />
+
             <TextField
               size="small"
               label="Company name"
@@ -330,48 +362,12 @@ export default function Ticker() {
               onChange={(e) => setForm((p) => ({ ...p, companyName: e.target.value }))}
             />
 
-            <FormControl size="small">
-              <InputLabel>Market</InputLabel>
-              <Select
-                label="Market"
-                value={form.market}
-                disabled={optionsLoading}
-                onChange={(e) => setForm((p) => ({ ...p, market: e.target.value as Market }))}
-              >
-                {optionsLoading ? (
-                  <MenuItem value={form.market} disabled>Loading…</MenuItem>
-                ) : (
-                  marketItems.map((m) => (
-                    <MenuItem key={m.value} value={m.value}>{m.label}</MenuItem>
-                  ))
-                )}
-              </Select>
-            </FormControl>
-
-            <FormControl size="small">
-              <InputLabel>Classes</InputLabel>
-              <Select
-                multiple
-                label="Classes"
-                value={form.stockClasses}
-                disabled={optionsLoading}
-                onChange={(e) => {
-                  const next = normalizeMulti(e.target.value);
-                  setForm((p) => ({ ...p, stockClasses: next }));
-                }}
-                renderValue={(selected) =>
-                  (selected as StockClass[]).map((c) => classLabel(c)).join(', ')
-                }
-              >
-                {optionsLoading ? (
-                  <MenuItem disabled>Loading…</MenuItem>
-                ) : (
-                  classItems.map((c) => (
-                    <MenuItem key={c.value} value={c.value}>{c.label}</MenuItem>
-                  ))
-                )}
-              </Select>
-            </FormControl>
+            <StockClassMultiSelect
+              value={form.stockClasses}
+              items={classItems}
+              onChange={(next) => setForm((p) => ({ ...p, stockClasses: next }))}
+              disabled={optionsLoading}
+            />
 
             <TextField
               size="small"
@@ -380,22 +376,12 @@ export default function Ticker() {
               onChange={(e) => setForm((p) => ({ ...p, industry: e.target.value }))}
             />
 
-            <FormControl size="small">
-              <InputLabel>Bucket</InputLabel>
-              <Select
-                label="Bucket"
-                value={form.bucket}
-                onChange={(e) => setForm((p) => ({ ...p, bucket: e.target.value as Bucket }))}
-              >
-                {optionsLoading ? (
-                  <MenuItem value={form.bucket} disabled>Loading…</MenuItem>
-                ) : (
-                  bucketItems.map((b) => (
-                    <MenuItem key={b.value} value={b.value}>{b.label}</MenuItem>
-                  ))
-                )}
-              </Select>
-            </FormControl>
+            <BucketSelect
+              value={form.bucket}
+              items={bucketItems}
+              disabled={optionsLoading}
+              onChange={(v) => setForm((p) => ({ ...p, bucket: v }))}
+            />
           </DialogContent>
 
           <DialogActions>

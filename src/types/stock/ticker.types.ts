@@ -45,6 +45,29 @@ export type TickerLatestDTO = {
   thresholdRed: number;
 };
 
+export type TickerDTO = {
+  id: string;
+  symbol: string;
+  companyName: string;
+  market: Market;
+  stockClasses: StockClass[];
+  industry: string;
+  bucket: Bucket;
+};
+
+export type CreateTickerDTO = Omit<TickerDTO, 'id'>;
+export type UpdateTickerDTO = Partial<CreateTickerDTO>;
+
+export type SymbolSuggestDTO = {
+  symbolId: number;
+  symbol: string;
+  description?: string;
+  lastPrice?: number | null;
+  bidPrice?: number | null;
+  askPrice?: number | null;
+  volume?: number | null;
+};
+
 export type SortBy = 'az' | 'za' | 'bucket' | 'favorability';
 
 export type StockFilters = {
@@ -60,16 +83,3 @@ export const defaultStockFilters: StockFilters = {
   sortBy: 'az',
   symbols: [],
 };
-
-export type TickerDTO = {
-  id: string;
-  symbol: string;
-  companyName: string;
-  market: Market;
-  stockClasses: StockClass[];
-  industry: string;
-  bucket: Bucket;
-};
-
-export type CreateTickerDTO = Omit<TickerDTO, 'id'>;
-export type UpdateTickerDTO = Partial<CreateTickerDTO>;

@@ -6,6 +6,8 @@ import { SegmentedToggleButton } from '../../common/SegmentedToggleButton';
 import { MarketSelect } from '../shared/MarketSelect';
 import { StockClassSelect } from '../shared/StockClassSelect';
 import { BucketMultiSelect } from '../shared/BucketMultiSelect';
+import { useTickerOptions } from '../../../hooks/stock/useTickerOptions';
+import { useMemo } from 'react';
 
 export function ChartWallControls(props: {
   market: Market;
@@ -45,23 +47,47 @@ export function ChartWallControls(props: {
     loadingTickers,
   } = props;
 
+  const { options, loading: optionsLoading } = useTickerOptions(true);
+
+  // -------- Options helpers (key -> label) --------
+  const marketItems = useMemo(
+    () => (options ? Object.entries(options.market).map(([value, label]) => ({ value: value as Market, label })) : []),
+    [options]
+  );
+
+  const classItems = useMemo(
+    () => (options ? Object.entries(options.stockClass).map(([value, label]) => ({ value: value as StockClass, label })) : []),
+    [options]
+  );
+
+  const bucketItems = useMemo(
+    () => (options ? Object.entries(options.bucket).map(([value, label]) => ({ value: value as Bucket, label })) : []),
+    [options]
+  );
+
   return (
     <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: 'repeat(12, 1fr)', mb: 1 }}>
       <MarketSelect
         value={market}
         onChange={onMarket}
+        items={marketItems}
+        disabled={optionsLoading}
         sx={{ gridColumn: { xs: 'span 6', md: 'span 4', lg: 'span 2' } }}
       />
 
       <StockClassSelect
         value={stockClass}
         onChange={onStockClass}
+        items={classItems}
+        disabled={optionsLoading}
         sx={{ gridColumn: { xs: 'span 6', md: 'span 4', lg: 'span 2' } }}
       />
 
       <BucketMultiSelect
         value={buckets}
         onChange={onBuckets}
+        items={bucketItems}
+        disabled={optionsLoading}
         sx={{ gridColumn: { xs: 'span 6', md: 'span 4', lg: 'span 2' } }}
       />
 

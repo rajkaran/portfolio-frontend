@@ -2,17 +2,17 @@ import { Checkbox, FormControl, InputLabel, ListItemText, MenuItem, Select } fro
 import type { SxProps, Theme } from '@mui/material/styles';
 import type { Bucket } from '../../../types/stock/ticker.types';
 
-const BUCKETS: Bucket[] = ['core', 'watch', 'once', 'avoid'];
-
 export function BucketMultiSelect(props: {
   value: Bucket[];
   onChange: (v: Bucket[]) => void;
+  items: { value: Bucket; label: string }[];
   label?: string;
   size?: 'small' | 'medium';
   disabled?: boolean;
   sx?: SxProps<Theme>;
 }) {
   const { value, onChange, label = 'Bucket', size = 'small', disabled, sx } = props;
+  const labelBy = new Map(props.items.map(x => [x.value, x.label]));
 
   return (
     <FormControl size={size} sx={sx} disabled={disabled}>
@@ -22,12 +22,14 @@ export function BucketMultiSelect(props: {
         label={label}
         value={value}
         onChange={(e) => onChange(e.target.value as Bucket[])}
-        renderValue={(sel) => (sel as Bucket[]).join(', ')}
+        renderValue={(sel) =>
+          (sel as Bucket[]).map(b => labelBy.get(b) ?? b).join(', ')
+        }
       >
-        {BUCKETS.map((b) => (
-          <MenuItem key={b} value={b}>
-            <Checkbox checked={value.includes(b)} />
-            <ListItemText primary={b} />
+        {props.items.map((b) => (
+          <MenuItem key={b.value} value={b.value}>
+            <Checkbox checked={value.includes(b.value)} />
+            <ListItemText primary={b.label} />
           </MenuItem>
         ))}
       </Select>

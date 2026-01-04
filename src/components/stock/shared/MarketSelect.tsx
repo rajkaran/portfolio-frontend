@@ -5,6 +5,7 @@ import type { Market } from '../../../types/stock/ticker.types';
 export function MarketSelect(props: {
   value: Market;
   onChange: (v: Market) => void;
+  items: { value: Market; label: string }[];
   label?: string;
   size?: 'small' | 'medium';
   disabled?: boolean;
@@ -16,9 +17,9 @@ export function MarketSelect(props: {
     <FormControl size={size} sx={sx} disabled={disabled}>
       <InputLabel>{label}</InputLabel>
       <Select label={label} value={value} onChange={(e) => onChange(e.target.value as Market)}>
-        <MenuItem value="canada">Canada</MenuItem>
-        <MenuItem value="usa">USA</MenuItem>
-        <MenuItem value="india">India</MenuItem>
+        {props.items.map((m) => (
+          <MenuItem key={m.value} value={m.value}>{m.label}</MenuItem>
+        ))}
       </Select>
     </FormControl>
   );

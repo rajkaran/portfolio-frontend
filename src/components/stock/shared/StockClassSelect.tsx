@@ -5,6 +5,7 @@ import type { StockClass } from '../../../types/stock/ticker.types';
 export function StockClassSelect(props: {
   value: StockClass;
   onChange: (v: StockClass) => void;
+  items: { value: StockClass; label: string }[];
   label?: string;
   size?: 'small' | 'medium';
   disabled?: boolean;
@@ -16,9 +17,9 @@ export function StockClassSelect(props: {
     <FormControl size={size} sx={sx} disabled={disabled}>
       <InputLabel>{label}</InputLabel>
       <Select label={label} value={value} onChange={(e) => onChange(e.target.value as StockClass)}>
-        <MenuItem value="dividend">Dividend</MenuItem>
-        <MenuItem value="trade">Trade</MenuItem>
-        <MenuItem value="longTerm">Long Term</MenuItem>
+        {props.items.map((m) => (
+          <MenuItem key={m.value} value={m.value}>{m.label}</MenuItem>
+        ))}
       </Select>
     </FormControl>
   );

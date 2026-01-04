@@ -26,6 +26,16 @@ export default function Dashboard() {
   const [tickerMap, setTickerMap] = useState<Map<string, TickerLatestDTO>>(new Map());
   const [wsConnected, setWsConnected] = useState(false);
 
+  // TODO: auto sugges for ticker page using questrade API?
+  // TODO: get the quick buy and sell from dahsbord
+  // TODO: get the sort workingon dashboard
+  // TODO: make trade page look better
+  // TODO: add a page to record dividends.
+  // TODO: create dividend tiles and notifications through emails
+  // TODO: complete favorability bar
+  // TODO: get the zoom tooltip on dahsboard working
+  // TODO: build the reporting with charts for - dividends over time, investment in dividend over time, total trading retunr over time, weekly average investment in trading.
+
   // For rendering (stable array)
   const tickers = useMemo(() => Array.from(tickerMap.values()), [tickerMap]);
 
@@ -172,7 +182,7 @@ export default function Dashboard() {
       </Box>
 
       <Box>
-        <FilterBar value={filters} onChange={onFiltersChange} options={tickers} />
+        <FilterBar value={filters} onChange={onFiltersChange} tickers={tickers} />
       </Box>
 
       <TickerGrid tickers={visibleTickers} onZoom={onZoom} onTrade={onTrade} onChangeThreshold={onChangeThreshold} />

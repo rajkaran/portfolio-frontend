@@ -19,7 +19,7 @@ const NAV_ITEMS = [
   { label: 'Trades', to: '/stock/trade', icon: <AttachMoneyIcon fontSize="small" /> },
   { label: 'Tickers', to: '/stock/ticker', icon: <ListAltIcon fontSize="small" /> },
   { label: 'Alert Logs', to: '/stock/alert-logs', icon: <NotificationsActiveIcon fontSize="small" /> },
-  { label: 'Wall of Stock Charts', to: '/stock/chartwall', icon: <MonitorHeartRounded fontSize="small" /> },
+  { label: 'Stock Wall', to: '/stock/chartwall', icon: <MonitorHeartRounded fontSize="small" /> },
   { label: 'Settings', to: '/stock/setting', icon: <SettingsIcon fontSize="small" /> },
 ];
 
@@ -104,6 +104,7 @@ export default function LeftNavBar({ collapsed, onToggleCollapse }: Props) {
               variant={active ? 'contained' : 'text'}
               fullWidth
               startIcon={collapsed ? undefined : item.icon}
+              title={collapsed ? item.label : undefined}
               sx={{
                 justifyContent: collapsed ? 'center' : 'flex-start',
                 minHeight: 40,

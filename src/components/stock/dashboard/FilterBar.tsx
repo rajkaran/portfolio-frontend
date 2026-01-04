@@ -1,27 +1,42 @@
 import { Box, FormControl, InputLabel, MenuItem, Select } from '@mui/material';
 import { isDefined } from '../../../utils/stock/filter';
-import type { SortBy, StockFilters, TickerLatestDTO, TickerOption } from '../../../types/stock/ticker.types';
+import type { Market, SortBy, StockClass, StockFilters, TickerLatestDTO, TickerOption } from '../../../types/stock/ticker.types';
 import { MarketSelect } from '../shared/MarketSelect';
 import { StockClassSelect } from '../shared/StockClassSelect';
 import { TickerAutosuggest } from '../shared/TickerAutosuggest';
+import { useTickerOptions } from '../../../hooks/stock/useTickerOptions';
+import { useMemo } from 'react';
 
 export default function FilterBar({
   value,
   onChange,
-  options,
+  tickers,
   loading,
 }: {
   value: StockFilters;
   onChange: (next: StockFilters) => void;
-  options: TickerLatestDTO[];     // candidates (already loaded)
+  tickers: TickerLatestDTO[];     // candidates (already loaded)
   loading?: boolean;
 }) {
+  const { options, loading: optionsLoading } = useTickerOptions(true);
+
+  // -------- Options helpers (key -> label) --------
+  const marketItems = useMemo(
+    () => (options ? Object.entries(options.market).map(([value, label]) => ({ value: value as Market, label })) : []),
+    [options]
+  );
+
+  const classItems = useMemo(
+    () => (options ? Object.entries(options.stockClass).map(([value, label]) => ({ value: value as StockClass, label })) : []),
+    [options]
+  );
+
   const set = <K extends keyof StockFilters>(key: K, v: StockFilters[K]) => {
     onChange({ ...value, [key]: v });
   };
 
   // Convert TickerLatestDTO -> TickerOption
-  const optionList: TickerOption[] = options.map(o => ({
+  const optionList: TickerOption[] = tickers.map(o => ({
     id: o.id,
     symbol: o.symbol,
     companyName: o.companyName,
@@ -47,8 +62,21 @@ export default function FilterBar({
         },
       }}
     >
-      <MarketSelect value={value.market} onChange={(v) => set('market', v)} sx={{ minWidth: 0 }} />
-      <StockClassSelect value={value.stockClass} onChange={(v) => set('stockClass', v)} sx={{ minWidth: 0 }} />
+      <MarketSelect
+        value={value.market}
+        items={marketItems}
+        onChange={(v) => set('market', v)}
+        disabled={optionsLoading}
+        sx={{ minWidth: 0 }}
+      />
+
+      <StockClassSelect
+        value={value.stockClass}
+        items={classItems}
+        onChange={(v) => set('stockClass', v)}
+        disabled={optionsLoading}
+        sx={{ minWidth: 0 }}
+      />
 
       <FormControl size="small" sx={{ minWidth: 0 }}>
         <InputLabel>Sort by</InputLabel>

@@ -284,12 +284,6 @@ export default function ChartWall() {
       try {
         const res = await fetchChartSeries({ market, symbols: missing, field: 'last' });
 
-        console.log('fetchMissing missing=', missing);
-        console.log('fetchChartSeries returned symbols=', res.series.map(x => x.symbol));
-
-
-        // loadedDayRef.current = res.day;
-        // loadedTzRef.current = res.timezone;
         setLoadedDay(res.day);
         setLoadedTz(res.timezone);
 
