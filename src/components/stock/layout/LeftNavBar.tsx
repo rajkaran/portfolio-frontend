@@ -7,6 +7,7 @@ import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import ListAltIcon from '@mui/icons-material/ListAlt';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import SettingsIcon from '@mui/icons-material/Settings';
+import { MonitorHeartRounded } from '@mui/icons-material';
 
 type Props = {
   collapsed: boolean;
@@ -18,6 +19,7 @@ const NAV_ITEMS = [
   { label: 'Trades', to: '/stock/trade', icon: <AttachMoneyIcon fontSize="small" /> },
   { label: 'Tickers', to: '/stock/ticker', icon: <ListAltIcon fontSize="small" /> },
   { label: 'Alert Logs', to: '/stock/alert-logs', icon: <NotificationsActiveIcon fontSize="small" /> },
+  { label: 'Wall of Stock Charts', to: '/stock/chartwall', icon: <MonitorHeartRounded fontSize="small" /> },
   { label: 'Settings', to: '/stock/setting', icon: <SettingsIcon fontSize="small" /> },
 ];
 

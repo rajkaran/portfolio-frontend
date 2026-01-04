@@ -149,9 +149,14 @@ export default function Dashboard() {
 
   return (
     <StockShell right={({ closeRight }) => <RightFavorableBar onClose={closeRight} />} >
-      <Typography variant="h5" sx={{ fontWeight: 500, mb: 2 }}>
-        Dashboard
-      </Typography>
+      <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', mb: 1 }}>
+        <Typography variant="h5" sx={{ fontWeight: 500 }}>
+          Dashboard
+        </Typography>
+        <Typography variant="body2" sx={{ opacity: 0.8 }}>
+          WS: {wsConnected ? 'connected' : 'disconnected'}
+        </Typography>
+      </Box>
 
       <Box>
         <FilterBar value={filters} onChange={setFilters} />
