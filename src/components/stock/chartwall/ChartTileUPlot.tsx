@@ -187,10 +187,10 @@ export function ChartTileUPlot({
             left: '50%',
             top: '50%',
             transform: 'translate(-50%, -50%)',
-            fontWeight: 600,
+            fontWeight: 500,
           }}
         >
-          <span ref={priceElRef}>—</span>
+          $<span ref={priceElRef}>—</span>
         </Typography>
       </Box>
 

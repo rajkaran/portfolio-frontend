@@ -76,7 +76,7 @@ export default function ChartWall() {
       stockClass: 'trade',
       buckets: ['core'],
       symbols: [],
-      perTab: 4,
+      perTab: 2,
       rotateSec: 10,
       rotateOn: false,
       tab: 0,

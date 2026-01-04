@@ -1,8 +1,11 @@
-import { Box, FormControl, InputLabel, Select, MenuItem, Checkbox, ListItemText } from '@mui/material';
+import { Box, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
 import type { Market, StockClass, Bucket, TickerDTO } from '../../../types/stock/ticker.types';
 import { TickerAutosuggest } from '../shared/TickerAutosuggest';
 import type { PerTab, RotateSec } from '../../../types/stock/chart.type';
 import { SegmentedToggleButton } from '../../common/SegmentedToggleButton';
+import { MarketSelect } from '../shared/MarketSelect';
+import { StockClassSelect } from '../shared/StockClassSelect';
+import { BucketMultiSelect } from '../shared/BucketMultiSelect';
 
 export function ChartWallControls(props: {
   market: Market;
@@ -44,41 +47,23 @@ export function ChartWallControls(props: {
 
   return (
     <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: 'repeat(12, 1fr)', mb: 1 }}>
-      <FormControl size="small" sx={{ gridColumn: { xs: 'span 6', md: 'span 4', lg: 'span 2' } }}>
-        <InputLabel>Market</InputLabel>
-        <Select label="Market" value={market} onChange={(e) => onMarket(e.target.value as Market)}>
-          <MenuItem value="canada">Canada</MenuItem>
-          <MenuItem value="usa">USA</MenuItem>
-          <MenuItem value="india">India</MenuItem>
-        </Select>
-      </FormControl>
+      <MarketSelect
+        value={market}
+        onChange={onMarket}
+        sx={{ gridColumn: { xs: 'span 6', md: 'span 4', lg: 'span 2' } }}
+      />
 
-      <FormControl size="small" sx={{ gridColumn: { xs: 'span 6', md: 'span 4', lg: 'span 2' } }}>
-        <InputLabel>Class</InputLabel>
-        <Select label="Class" value={stockClass} onChange={(e) => onStockClass(e.target.value as any)}>
-          <MenuItem value="dividend">Dividend</MenuItem>
-          <MenuItem value="trade">Trade</MenuItem>
-          <MenuItem value="longTerm">Long Term</MenuItem>
-        </Select>
-      </FormControl>
+      <StockClassSelect
+        value={stockClass}
+        onChange={onStockClass}
+        sx={{ gridColumn: { xs: 'span 6', md: 'span 4', lg: 'span 2' } }}
+      />
 
-      <FormControl size="small" sx={{ gridColumn: { xs: 'span 6', md: 'span 4', lg: 'span 2' } }}>
-        <InputLabel>Bucket</InputLabel>
-        <Select
-          multiple
-          label="Bucket"
-          value={buckets}
-          onChange={(e) => onBuckets(e.target.value as Bucket[])}
-          renderValue={(sel) => sel.join(', ')}
-        >
-          {(['core', 'watch', 'once', 'avoid'] as Bucket[]).map((b) => (
-            <MenuItem key={b} value={b}>
-              <Checkbox checked={buckets.includes(b)} />
-              <ListItemText primary={b} />
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
+      <BucketMultiSelect
+        value={buckets}
+        onChange={onBuckets}
+        sx={{ gridColumn: { xs: 'span 6', md: 'span 4', lg: 'span 2' } }}
+      />
 
       <FormControl size="small" sx={{ gridColumn: { xs: 'span 6', md: 'span 4', lg: 'span 1' } }}>
         <InputLabel>Charts / Tab</InputLabel>
