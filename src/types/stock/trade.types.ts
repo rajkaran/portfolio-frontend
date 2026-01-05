@@ -1,4 +1,6 @@
 export type TradeType = 'buy' | 'sell';
+export type TradeDialogMode = 'quick' | 'full';
+export type Broker = 'wealthsimple' | 'questrade' | 'td' ;
 
 export type TradeDTO = {
   id: string;
@@ -7,7 +9,7 @@ export type TradeDTO = {
 
   rate: number;
   quantity: number;
-  totalAmount: number;
+  totalAmount?: number;
 
   brokerageFee?: number;
   broker?: string;
@@ -25,3 +27,13 @@ export type TradeDTO = {
 
 export type CreateTradeDTO = Omit<TradeDTO, 'id' | 'createDatetime'>;
 export type UpdateTradeDTO = Partial<CreateTradeDTO>;
+
+export type TradeWsMsg = {
+  type: 'trade';
+  symbol: string;
+  patch: {
+    avgBookCost?: number | null;
+    quantityHolding?: number | null;
+  };
+  ts?: string;
+};

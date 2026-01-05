@@ -1,11 +1,11 @@
 import { Box, Typography } from '@mui/material';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import StockShell from '../../components/stock/layout/StockShell';
 import FilterBar from '../../components/stock/dashboard/FilterBar';
 import RightFavorableBar from '../../components/stock/dashboard/RightFavorableBar';
 import TickerGrid from '../../components/stock/dashboard/TickerGrid';
-import { defaultStockFilters, type StockFilters, type TickerLatestDTO } from '../../types/stock/ticker.types';
+import { defaultStockFilters, type StockFilters, type TickerLatestDTO, type TickerOption } from '../../types/stock/ticker.types';
 import { applyFilters } from '../../utils/stock/filter';
 import { favorabilityScore } from '../../utils/stock/favorability';
 import TickerCardTooltip from '../../components/stock/dashboard/TickerDetailTooltip';
@@ -15,18 +15,28 @@ import type { PriceUpdateDTO } from '../../types/stock/price-update.types';
 import { patchTickerThresholds } from '../../services/stock/ticker-api';
 import { useSnackbar } from '../../components/common/SnackbarProvider';
 import type { ThresholdKey } from '../../constants/stockUI';
+import { CreateTradeDialog } from '../../components/stock/shared/CreateTradeDialog';
+import type { TradeType, TradeWsMsg } from '../../types/stock/trade.types';
+import { useTickerOptions } from '../../hooks/stock/useTickerOptions';
 
 export default function Dashboard() {
   const { showSnackbar } = useSnackbar();
+  const { options } = useTickerOptions(true);
 
   const [filters, setFilters] = useState(defaultStockFilters);
   const [zoomTickerId, setZoomTickerId] = useState<string | null>(null);
   const [zoomAnchorEl, setZoomAnchorEl] = useState<HTMLElement | null>(null);
 
+  // snapshot state
   const [tickerMap, setTickerMap] = useState<Map<string, TickerLatestDTO>>(new Map());
   const [wsConnected, setWsConnected] = useState(false);
 
-  // TODO: auto sugges for ticker page using questrade API?
+  // QUICK TRADE dialog state
+  const [tradeOpen, setTradeOpen] = useState(false);
+  const [tradeTickerId, setTradeTickerId] = useState<string | null>(null);
+  const [tradeSide, setTradeSide] = useState<'buy' | 'sell'>('buy');
+
+
   // TODO: get the quick buy and sell from dahsbord
   // TODO: get the sort workingon dashboard
   // TODO: make trade page look better
@@ -38,6 +48,24 @@ export default function Dashboard() {
 
   // For rendering (stable array)
   const tickers = useMemo(() => Array.from(tickerMap.values()), [tickerMap]);
+
+  // tickers for CreateTradeDialog (needs TickerOption shape)
+  const tickerOptions: TickerOption[] = useMemo(
+    () =>
+      tickers.map((t) => ({
+        id: t.id,
+        symbol: t.symbol,
+        companyName: t.companyName,
+        bucket: t.bucket,
+      })),
+    [tickers]
+  );
+
+  // known brokers
+  const brokerItems = useMemo(
+    () => (options ? Object.entries(options.broker).map(([value, label]) => ({ value: value, label })) : []),
+    [options]
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -59,6 +87,7 @@ export default function Dashboard() {
   useEffect(() => {
     const wsHandle = connectPricesWs({
       onStatus: (s) => setWsConnected(s.connected),
+
       onPriceUpdate: (u: PriceUpdateDTO) => {
         setTickerMap((prev) => {
           const existing = prev.get(u.symbol);
@@ -86,6 +115,35 @@ export default function Dashboard() {
             symbolId: u.symbolId ?? existing.symbolId,
           });
 
+          return next;
+        });
+      },
+
+      onTrade: (m: TradeWsMsg) => {
+        setTickerMap((prev) => {
+          const existing = prev.get(m.symbol);
+          if (!existing) return prev; // not in current snapshot
+
+          const next = new Map(prev);
+
+          // apply patch
+          const updated = {
+            ...existing,
+            ...(m.patch.avgBookCost !== undefined ? { avgBookCost: m.patch.avgBookCost ?? undefined } : {}),
+            ...(m.patch.quantityHolding !== undefined ? { quantityHolding: m.patch.quantityHolding ?? undefined } : {}),
+          } as any;
+
+          // optional: recalc totalReturn using latest price
+          const last = updated.lastPrice ?? existing.lastPrice;
+          if (updated.quantityHolding && updated.quantityHolding > 0) {
+            updated.totalReturn =
+              last * updated.quantityHolding -
+              (updated.avgBookCost ?? 0) * updated.quantityHolding;
+          } else {
+            updated.totalReturn = 0;
+          }
+
+          next.set(m.symbol, updated);
           return next;
         });
       },
@@ -124,9 +182,24 @@ export default function Dashboard() {
     setZoomAnchorEl(null);
   };
 
-  const onTrade = (id: string, side: 'buy' | 'sell') => {
-    console.log('trade', { id, side });
-  };
+  const openQuickTrade = useCallback((tickerId: string, side: 'buy' | 'sell') => {
+    setTradeTickerId(tickerId);
+    setTradeSide(side);
+    setTradeOpen(true);
+  }, []);
+
+  const closeQuickTrade = useCallback(() => {
+    setTradeOpen(false);
+    setTradeTickerId(null);
+    // keep tradeSide as-is; doesn’t matter
+  }, []);
+
+  // const onTrade = (id: string, side: TradeType) => {
+  //   console.log('trade', { id, side });
+  //   setQuickTickerId(id);
+  //   setQuickSide(side);
+  //   setQuickOpen(true);
+  // };
 
   const onChangeThreshold = async (tickerId: string, key: ThresholdKey, value: number) => {
     // 1) optimistic update
@@ -185,9 +258,25 @@ export default function Dashboard() {
         <FilterBar value={filters} onChange={onFiltersChange} tickers={tickers} />
       </Box>
 
-      <TickerGrid tickers={visibleTickers} onZoom={onZoom} onTrade={onTrade} onChangeThreshold={onChangeThreshold} />
+      <TickerGrid
+        tickers={visibleTickers}
+        onZoom={onZoom}
+        onTrade={(tickerId: string, side: TradeType) => openQuickTrade(tickerId, side)}
+        onChangeThreshold={onChangeThreshold}
+      />
 
       <TickerCardTooltip open={Boolean(zoomTickerId)} anchorEl={zoomAnchorEl} ticker={zoomTicker} onClose={closeZoom} />
+
+      {/* Quick trade dialog */}
+      <CreateTradeDialog
+        open={tradeOpen}
+        onClose={closeQuickTrade}
+        mode="quick"
+        tickers={tickerOptions}
+        brokerItems={brokerItems}
+        fixedTickerId={tradeTickerId ?? undefined}
+        presetType={tradeSide}
+      />
 
     </StockShell>
   );

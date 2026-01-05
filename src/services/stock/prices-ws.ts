@@ -1,11 +1,14 @@
 import type { PriceUpdateDTO } from '../../types/stock/price-update.types';
+import type { TradeWsMsg } from '../../types/stock/trade.types';
 
 type Msg =
   | { type: 'hello'; data: any }
-  | { type: 'priceBatch'; data: PriceUpdateDTO[] };
+  | { type: 'priceBatch'; data: PriceUpdateDTO[] }
+  | TradeWsMsg;
 
 export function connectPricesWs(opts: {
   onPriceUpdate: (u: PriceUpdateDTO) => void;
+  onTrade?: (m: TradeWsMsg) => void;
   onStatus?: (s: { connected: boolean }) => void;
 }) {
   const base = import.meta.env.VITE_LOOPBACK_API_BASE_URL ?? 'http://localhost:3000';
@@ -41,9 +44,15 @@ export function connectPricesWs(opts: {
     ws.onmessage = (ev) => {
       try {
         const msg: Msg = JSON.parse(ev.data);
-        // if (msg.type === 'priceUpdate') opts.onPriceUpdate(msg.data);
+
         if (msg.type === 'priceBatch') {
           for (const u of msg.data) opts.onPriceUpdate(u);
+          return;
+        }
+
+        if (msg.type === 'trade') {
+          opts.onTrade?.(msg);
+          return;
         }
       } catch {
         // ignore junk

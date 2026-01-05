@@ -84,6 +84,7 @@ export default function TickerCard({
             <IconButton
               size="small"
               onClick={() => onZoom(ticker.id, cardRef.current)}
+              title="Zoom"
               aria-label="Zoom"
             >
               <ZoomInIcon fontSize="small" />
@@ -92,6 +93,7 @@ export default function TickerCard({
             <IconButton
               size="small"
               onClick={() => onTrade(ticker.id, 'buy')}
+              title="Buy"
               aria-label="Buy"
             >
               <ShoppingCartIcon fontSize="small" />
@@ -100,14 +102,13 @@ export default function TickerCard({
             <IconButton
               size="small"
               onClick={() => onTrade(ticker.id, 'sell')}
+              title="Sell"
               aria-label="Sell"
             >
               <SellIcon fontSize="small" />
             </IconButton>
           </Stack>
         </Stack>
-
-
 
         {/* Placeholder for your threshold-line visual */}
         <Box sx={{ mt: .5 }}>

@@ -1,23 +1,18 @@
 import { loopbackApi } from './loopback-api';
-import type { CreateTradeDTO, TradeDTO, UpdateTradeDTO } from '../../types/stock/trade.types';
+import type { Broker, CreateTradeDTO, TradeDTO, TradeType, UpdateTradeDTO } from '../../types/stock/trade.types';
 
-export async function listTrades(params?: { tickerId?: string; tradeType?: 'buy' | 'sell'; q?: string }) {
+export async function listTrades(params?: { symbols?: string[]; tradeType?: TradeType; broker?: Broker }) {
   const and: Array<Record<string, any>> = [];
 
-  if (params?.tickerId) and.push({ tickerId: params.tickerId });
+  // filter by symbol (human expectation)
+  if (params?.symbols?.length) and.push({ symbol: { inq: params.symbols } });
+
   if (params?.tradeType) and.push({ tradeType: params.tradeType });
 
-  // crude search: symbol OR broker contains
-  // (LoopBack Mongo "like" works; if not, remove this part)
-  if (params?.q?.trim()) {
-    const q = params.q.trim();
-    and.push({
-      or: [
-        { symbol: { like: q, options: 'i' } },
-        { broker: { like: q, options: 'i' } },
-      ],
-    });
-  }
+  // broker is dropdown now: exact match (not "like")
+  if (params?.broker) and.push({ broker: params.broker });
+
+  and.push({ isActive: true });
 
   const filter = {
     where: and.length ? { and } : undefined,

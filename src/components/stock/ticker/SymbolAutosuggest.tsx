@@ -1,8 +1,5 @@
-import * as React from 'react';
 import { Autocomplete, Box, CircularProgress, TextField, Typography } from '@mui/material';
 import type { SymbolSuggestDTO } from '../../../types/stock/ticker.types';
-
-
 
 export function SymbolAutosuggest(props: {
   value: SymbolSuggestDTO | null;
