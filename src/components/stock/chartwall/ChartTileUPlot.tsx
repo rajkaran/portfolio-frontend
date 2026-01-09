@@ -3,20 +3,24 @@ import uPlot from 'uplot';
 import 'uplot/dist/uPlot.min.css';
 import { Box, Typography } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
+import { getSessionBounds } from '../../../utils/stock/ChartTileUPlot';
 
 export function ChartTileUPlot({
   symbol,
   getSeries,
   subscribeLatest,
   subscribeSeries,
+  loadedDay,
+  loadedTz,
 }: {
   symbol: string;
   getSeries: (symbol: string) => { t: number[]; v: number[] } | undefined;
   subscribeLatest: (symbol: string, cb: (p: { price: number; time: string }) => void) => () => void;
   subscribeSeries: (symbol: string, cb: () => void) => () => void;
+  loadedDay: string; // "yyyy-MM-dd"
+  loadedTz: string;  // e.g. "America/Toronto"
 }) {
   const theme = useTheme();
-  const hasFitRef = React.useRef(false);
 
   const rootRef = React.useRef<HTMLDivElement | null>(null);
   const plotRef = React.useRef<uPlot | null>(null);
@@ -45,25 +49,39 @@ export function ChartTileUPlot({
     tip.style.display = 'block';
   }, []);
 
+  const applySessionXScale = React.useCallback(() => {
+    const p = plotRef.current;
+    if (!p) return;
+
+    // If we don't have a loaded day yet, don't force a scale.
+    if (!loadedDay) return;
+
+    const tz = loadedTz || 'America/Toronto';
+    const { min, max } = getSessionBounds(loadedDay, tz, 5);
+
+    // Lock x to full session window (+ padding)
+    p.setScale('x', { min, max });
+  }, [loadedDay, loadedTz]);
+
   const applySeriesNow = React.useCallback(() => {
     const p = plotRef.current;
     if (!p) return;
 
     const s = getSeries(symbol);
-
-    // Check if data exists and lengths match
-    if (s && s.t && s.v && s.t.length > 0 && s.t.length === s.v.length) {
-      // The 'true' argument resets the axes to fit the new data.
-      // Without this, the chart might be drawing data "off-screen".
-      const resetScales = !hasFitRef.current;
-      p.setData([s.t, s.v] as uPlot.AlignedData, resetScales);
-      if (resetScales) hasFitRef.current = true;
+    if (!s || !s.t?.length || s.t.length !== s.v.length) {
+      // still keep session grid visible even when empty
+      applySessionXScale();
+      return;
     }
-  }, [symbol, getSeries]);
+
+    // IMPORTANT: do NOT auto-fit x from data. We lock x to session.
+    p.setData([s.t, s.v] as uPlot.AlignedData, true);
+
+    // Ensure x is locked (in case chart was recreated/resized)
+    applySessionXScale();
+  }, [symbol, getSeries, applySessionXScale]);
 
   React.useEffect(() => {
-    hasFitRef.current = false;
-
     const root = rootRef.current;
     if (!root) return;
 
@@ -132,19 +150,25 @@ export function ChartTileUPlot({
 
     // Initialize with whatever is available (or empty arrays)
     const initial = getSeries(symbol);
-    const initialData = (initial && initial.t.length > 0)
-      ? [initial.t, initial.v]
-      : [[], []];
+    const initialData =
+      initial && initial.t?.length && initial.t.length === initial.v.length
+        ? ([initial.t, initial.v] as uPlot.AlignedData)
+        : ([[], []] as uPlot.AlignedData);
 
-    plotRef.current = new uPlot(opts, initialData as uPlot.AlignedData, root);
+    plotRef.current = new uPlot(opts, initialData, root);
+
+    // Lock x right away so even empty charts show the session grid.
+    applySessionXScale();
 
     const ro = new ResizeObserver(() => {
-      if (plotRef.current && rootRef.current) {
-        plotRef.current.setSize({
-          width: rootRef.current.clientWidth,
-          height: rootRef.current.clientHeight,
-        });
-      }
+      const p = plotRef.current;
+      const r = rootRef.current;
+      if (!p || !r) return;
+
+      p.setSize({ width: r.clientWidth, height: r.clientHeight });
+
+      // Re-apply locked x after resize (important)
+      applySessionXScale();
     });
     ro.observe(root);
 
@@ -158,7 +182,14 @@ export function ChartTileUPlot({
       plotRef.current?.destroy();
       plotRef.current = null;
     };
-  }, [symbol, getSeries, theme.palette.secondary.main, hideTip, showTipAt]);
+  }, [symbol, getSeries, theme.palette.secondary.main, hideTip, showTipAt, applySessionXScale]);
+
+  // Apply x-scale whenever day/tz changes (e.g. user loads another day)
+  React.useEffect(() => {
+    applySessionXScale();
+    // also re-apply data so it redraws within the new window
+    applySeriesNow();
+  }, [applySessionXScale, applySeriesNow]);
 
   // Handle updates from ChartWall's seriesSubsRef
   React.useEffect(() => {

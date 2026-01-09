@@ -77,7 +77,10 @@ export default function TickerCard({
       >
         <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mx: 1 }}>
           <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-            {ticker.symbol}
+            {ticker.symbol + ' '}
+            <Box component="span" sx={{ fontWeight: 400, fontSize: '0.9em' }}>
+              ({ticker.quantityHolding})
+            </Box>
           </Typography>
 
           <Stack direction="row" spacing={0.5}>

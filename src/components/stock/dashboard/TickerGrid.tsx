@@ -21,7 +21,7 @@ export default function TickerGrid({
           display: 'grid',
           gap: 2,
           // key line: number of columns depends on *available width*
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
           alignItems: 'stretch',
         }}
       >

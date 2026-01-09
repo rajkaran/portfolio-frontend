@@ -221,9 +221,18 @@ export default function ChartWall() {
   }, [allTickers, market, stockClass, buckets]);
 
   useEffect(() => {
+    // Don't prune until we've actually loaded tickers for this market/class
+    if (!hydrated) return;
+    if (loadingTickers) return;
+    if (allTickers.length === 0) return;
+
+    // If filters currently yield zero options, don't nuke the URL selections
+    // (could be transient while user is switching filters)
+    if (filteredTickers.length === 0) return;
+
     const allowed = new Set(filteredTickers.map(t => t.symbol));
     setSelectedSymbols(prev => prev.filter(sym => allowed.has(sym)));
-  }, [filteredTickers]);
+  }, [hydrated, loadingTickers, allTickers.length, filteredTickers]);
 
   // Selecting tickers
   const selectedTickers = useMemo(() => {
@@ -353,6 +362,8 @@ export default function ChartWall() {
       <ChartGrid
         symbols={visibleSymbols}
         perTab={perTab}
+        loadedDay={loadedDay}
+        loadedTz={loadedTz || 'America/Toronto'}
         getSeries={getSeries}
         subscribeLatest={subscribeLatest}
         subscribeSeries={subscribeSeries}

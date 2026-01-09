@@ -5,6 +5,8 @@ import type { PerTab } from '../../../types/stock/chart.type';
 export function ChartGrid(props: {
   symbols: string[];
   perTab: PerTab;
+  loadedDay: string; // "yyyy-MM-dd"
+  loadedTz: string;  // e.g. "America/Toronto"
   getSeries: (symbol: string) => { t: number[]; v: number[] } | undefined;
   subscribeLatest: (symbol: string, cb: (p: { price: number; time: string }) => void) => () => void;
   subscribeSeries: (symbol: string, cb: () => void) => () => void;
@@ -42,6 +44,8 @@ export function ChartGrid(props: {
         >
           <ChartTileUPlot
             symbol={sym}
+            loadedDay={props.loadedDay}
+            loadedTz={props.loadedTz}
             getSeries={props.getSeries}
             subscribeLatest={props.subscribeLatest}
             subscribeSeries={props.subscribeSeries}

@@ -1,5 +1,5 @@
 import { Box, Typography } from '@mui/material';
-import { useState, useRef, useMemo, useEffect } from 'react';
+import { useState, useRef, useMemo } from 'react';
 
 import { useSnackbar } from '../../common/SnackbarProvider';
 import type { Thresholds } from '../../../utils/stock/thresholdValidation';
@@ -247,7 +247,7 @@ export default function ThresholdMini({
                     if (e.key === 'Escape') cancel();
                   }}
                   sx={{
-                    fontSize: 10,
+                    fontSize: 11,
                     lineHeight: 1,
                     width: 54,
                     padding: '2px 4px',
@@ -261,7 +261,7 @@ export default function ThresholdMini({
                   }}
                 />
               ) : (
-                <Typography variant="caption" sx={{ fontSize: 10, lineHeight: 1 }}>
+                <Typography variant="caption" sx={{ fontSize: 11, lineHeight: 1 }}>
                   {fmt(l.value)}
                 </Typography>
               )}
@@ -293,7 +293,7 @@ export default function ThresholdMini({
           left: '50%',           // center horizontally
           top: currentY,         // anchor to the line
           transform: 'translate(-50%, -50%)', // center on both axes
-          fontSize: 10,
+          fontSize: 11,
           lineHeight: 1,
           bgcolor: '#f7f7f7',
           px: 0.5,
