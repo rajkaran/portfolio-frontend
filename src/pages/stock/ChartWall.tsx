@@ -16,6 +16,7 @@ import { ChartGrid } from '../../components/stock/chartwall/ChartGrid';
 import { buildChartWallQueryString, readChartWallQuery } from '../../utils/stock/chartwallUrl';
 import type { Latest, PerTab, RotateSec } from '../../types/stock/chart.type';
 import { isDefined } from '../../utils/stock/filter';
+import { marketTz, nextMarketOpenDate } from '../../utils/stock/ChartTileUPlot';
 
 function chunk<T>(arr: T[], size: number): T[][] {
   if (size <= 0) return [arr];
@@ -68,6 +69,7 @@ export default function ChartWall() {
 
   const [loadedDay, setLoadedDay] = useState('');
   const [loadedTz, setLoadedTz] = useState('');
+  const [openTick, setOpenTick] = useState(0);
 
   const [wsConnected, setWsConnected] = useState(false);
 
@@ -118,7 +120,6 @@ export default function ChartWall() {
     if (current === qs) return; // idempotent under StrictMode
 
     window.history.replaceState(null, '', `${window.location.pathname}?${qs}`);
-
   }, [hydrated, market, stockClass, buckets, selectedSymbols, perTab, rotateSec, rotateOn, activeTab]);
 
   // ---- load tickers list for dropdown ----
@@ -270,16 +271,6 @@ export default function ChartWall() {
     return () => window.clearInterval(id);
   }, [rotateOn, rotateSec, tabs.length]);
 
-  // ---- market change: clear cached series/day ----
-  useEffect(() => {
-    if (!hydrated) return; // don’t clear during initial URL load
-
-    seriesRef.current.clear();
-    inFlightRef.current.clear();
-    loadedDayRef.current = '';
-    loadedTzRef.current = '';
-  }, [market]);
-
   // ---- fetch missing series ----
   const fetchMissing = useCallback(
     async (symbolsToEnsure: string[]) => {
@@ -308,6 +299,59 @@ export default function ChartWall() {
     },
     [market],
   );
+
+  // ---- force reload all selected (clears cache -> fetchMissing becomes full fetch) ----
+  const forceReloadAll = useCallback(() => {
+    seriesRef.current.clear();
+    inFlightRef.current.clear();
+    loadedDayRef.current = '';
+    loadedTzRef.current = '';
+    setLoadedDay('');
+    setLoadedTz('');
+
+    if (selectedSymbols.length) {
+      fetchMissing(selectedSymbols);
+    }
+  }, [selectedSymbols, fetchMissing]);
+
+  // ---- market change: clear cached series/day ----
+  useEffect(() => {
+    if (!hydrated) return;
+
+    seriesRef.current.clear();
+    inFlightRef.current.clear();
+    loadedDayRef.current = '';
+    loadedTzRef.current = '';
+    setLoadedDay('');
+    setLoadedTz('');
+  }, [market, hydrated]);
+
+  // schedule data load at 9:30 everyday
+  useEffect(() => {
+    if (!hydrated) return;
+    if (!selectedSymbols.length) return;
+
+    const tz = marketTz(market);
+    const nextOpen = nextMarketOpenDate(tz); // skips weekends (all markets)
+
+    const ms = Math.max(0, nextOpen.getTime() - Date.now());
+    if (ms <= 0) return;
+
+    const id = window.setTimeout(() => {
+      // If tab isn't visible, don't "miss" the refresh — try again soon.
+      if (document.visibilityState !== 'visible') {
+        window.setTimeout(() => setOpenTick((x) => x + 1), 60_000);
+        return;
+      }
+
+      forceReloadAll();
+
+      // schedule the next open
+      setOpenTick((x) => x + 1);
+    }, ms);
+
+    return () => window.clearTimeout(id);
+  }, [hydrated, market, selectedSymbols.length, forceReloadAll, openTick]);
 
   // fetch visible first
   useEffect(() => {
