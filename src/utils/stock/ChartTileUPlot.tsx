@@ -74,6 +74,15 @@ function tzNowParts(tz: string) {
 function dateForTzWallClock(y: number, m: number, d: number, hh: number, mm: number, tz: string) {
   const guess = new Date(Date.UTC(y, m - 1, d, hh, mm, 0));
   const offMin = tzOffsetMinutes(guess, tz);
+
+  // DST sanity guard
+  // Most market timezones are within [-12h, +14h]. Anything beyond that is "wrong".
+  if (!Number.isFinite(offMin) || Math.abs(offMin) > 14 * 60) {
+    console.warn(`[tz] suspicious offset`, { tz, offMin, y, m, d, hh, mm });
+    // safest fallback: assume no offset (UTC) rather than exploding
+    return guess;
+  }
+
   return new Date(guess.getTime() - offMin * 60000);
 }
 

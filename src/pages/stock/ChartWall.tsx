@@ -155,11 +155,40 @@ export default function ChartWall() {
         const price = u.last ?? u.bid ?? u.ask;
         if (price == null) return;
 
+        // 1) latest (header price) ✅
         const payload: Latest = { price, time: u.tradeDatetime };
         latestRef.current.set(u.symbol, payload);
 
-        const set = subsRef.current.get(u.symbol);
-        if (set) for (const cb of set) cb(payload);
+        const latestSubs = subsRef.current.get(u.symbol);
+        if (latestSubs) for (const cb of latestSubs) cb(payload);
+
+        // 2) series (chart line) ✅
+        // uPlot expects epoch *seconds* in your code (you multiply by 1000 later)
+        const tsSec = Math.floor(new Date(u.tradeDatetime).getTime() / 1000);
+        if (!Number.isFinite(tsSec)) return;
+
+        const s = seriesRef.current.get(u.symbol);
+        if (!s) return; // series not loaded yet; chart will start updating once fetched
+
+        const tArr = s.t;
+        const vArr = s.v;
+
+        const lastT = tArr.length ? tArr[tArr.length - 1] : -Infinity;
+
+        if (tsSec > lastT) {
+          tArr.push(tsSec);
+          vArr.push(price);
+        } else if (tsSec === lastT) {
+          // same-second updates: replace last point
+          vArr[vArr.length - 1] = price;
+        } else {
+          // out-of-order tick; ignore (or insert if you want)
+          return;
+        }
+
+        // notify tiles to redraw
+        const seriesSubs = seriesSubsRef.current.get(u.symbol);
+        if (seriesSubs) seriesSubs.forEach(fn => fn());
       },
     });
 
