@@ -5,7 +5,7 @@ import StockShell from '../../components/stock/layout/StockShell';
 import FilterBar from '../../components/stock/dashboard/FilterBar';
 import RightFavorableBar from '../../components/stock/dashboard/RightFavorableBar';
 import TickerGrid from '../../components/stock/dashboard/TickerGrid';
-import { defaultStockFilters, type StockFilters, type TickerLatestDTO, type TickerOption } from '../../types/stock/ticker.types';
+import { defaultStockFilters, type BrokerId, type StockFilters, type TickerLatestDTO, type TickerOption } from '../../types/stock/ticker.types';
 import { applyFilters } from '../../utils/stock/filter';
 import { favorabilityScore } from '../../utils/stock/favorability';
 import TickerCardTooltip from '../../components/stock/dashboard/TickerDetailTooltip';
@@ -18,6 +18,7 @@ import type { ThresholdKey } from '../../constants/stockUI';
 import { CreateTradeDialog } from '../../components/stock/shared/CreateTradeDialog';
 import type { TradeType, TradeWsMsg } from '../../types/stock/trade.types';
 import { useTickerOptions } from '../../hooks/stock/useTickerOptions';
+import { derivePositionFields, pickDefaultBroker } from '../../utils/stock/DashboardUtil';
 
 export default function Dashboard() {
   const { showSnackbar } = useSnackbar();
@@ -67,6 +68,15 @@ export default function Dashboard() {
     [options]
   );
 
+  const brokerLabels = useMemo(() => {
+    const m = {} as Record<BrokerId, string>;
+    for (const [value, label] of Object.entries(options?.broker ?? {})) {
+      m[value as BrokerId] = String(label);
+    }
+    return m;
+  }, [options]);
+
+  // ---- initial fetch
   useEffect(() => {
     let cancelled = false;
 
@@ -75,7 +85,23 @@ export default function Dashboard() {
       if (cancelled) return;
 
       const map = new Map<string, TickerLatestDTO>();
-      for (const t of rows) map.set(t.symbol, t);
+
+      for (const raw of rows as TickerLatestDTO[]) {
+        const normalized: TickerLatestDTO = {
+          ...raw,
+          positionsByBroker: raw.positionsByBroker ?? {},
+        };
+
+        const selected = normalized.uiSelectedBroker ?? pickDefaultBroker(normalized);
+        const derived = derivePositionFields(normalized, selected);
+
+        map.set(normalized.symbol, {
+          ...normalized,
+          uiSelectedBroker: selected,
+          ...derived,
+        });
+      }
+
       setTickerMap(map);
     })().catch(console.error);
 
@@ -84,6 +110,7 @@ export default function Dashboard() {
     };
   }, [filters.market, filters.stockClass]);
 
+  // ---- websocket connect
   useEffect(() => {
     const wsHandle = connectPricesWs({
       onStatus: (s) => setWsConnected(s.connected),
@@ -94,26 +121,24 @@ export default function Dashboard() {
           if (!existing) return prev; // ignore tickers not in current snapshot
 
           const next = new Map(prev);
-          const last = u.last ?? existing.lastPrice;
 
-          let totalReturn = 0;
-          if (existing.quantityHolding && existing.quantityHolding > 0) {
-            totalReturn =
-              last * existing.quantityHolding -
-              (existing.avgBookCost ?? 0) * existing.quantityHolding;
-          }
-
-          next.set(u.symbol, {
+          const updated: TickerLatestDTO = {
             ...existing,
-            lastPrice: last,
+            lastPrice: u.last ?? existing.lastPrice,
             bidPrice: u.bid ?? existing.bidPrice,
             askPrice: u.ask ?? existing.askPrice,
             volume: u.volume ?? existing.volume,
             updateDatetime: u.tradeDatetime,
             tradeDatetime: u.tradeDatetime,
-            totalReturn,
             symbolId: u.symbolId ?? existing.symbolId,
-          });
+          };
+
+          // recompute totalReturn based on selected broker snapshot (derived fields)
+          const selected = updated.uiSelectedBroker ?? pickDefaultBroker(updated);
+          updated.uiSelectedBroker = selected;
+          Object.assign(updated, derivePositionFields(updated, selected));
+
+          next.set(u.symbol, updated);
 
           return next;
         });
@@ -126,22 +151,32 @@ export default function Dashboard() {
 
           const next = new Map(prev);
 
-          // apply patch
-          const updated = {
-            ...existing,
-            ...(m.patch.avgBookCost !== undefined ? { avgBookCost: m.patch.avgBookCost ?? undefined } : {}),
-            ...(m.patch.quantityHolding !== undefined ? { quantityHolding: m.patch.quantityHolding ?? undefined } : {}),
-          } as any;
+          const broker = m.patch.broker; // BrokerId
+          const prevPos = existing.positionsByBroker ?? {};
+          const prevSnap = prevPos[broker] ?? {};
 
-          // optional: recalc totalReturn using latest price
-          const last = updated.lastPrice ?? existing.lastPrice;
-          if (updated.quantityHolding && updated.quantityHolding > 0) {
-            updated.totalReturn =
-              last * updated.quantityHolding -
-              (updated.avgBookCost ?? 0) * updated.quantityHolding;
-          } else {
-            updated.totalReturn = 0;
-          }
+          // apply patch
+          const nextSnap = {
+            ...prevSnap,
+            ...(m.patch.avgBookCost !== undefined ? { avgBookCost: m.patch.avgBookCost ?? null } : {}),
+            ...(m.patch.quantityHolding !== undefined ? { quantityHolding: m.patch.quantityHolding ?? null } : {}),
+          };
+
+          const updated: TickerLatestDTO = {
+            ...existing,
+            positionsByBroker: {
+              ...prevPos,
+              [broker]: nextSnap,
+            },
+          };
+
+          // keep selection stable, but ensure it exists
+          const selected = updated.uiSelectedBroker ?? pickDefaultBroker(updated);
+          updated.uiSelectedBroker = selected;
+
+          // If selected broker changed in the event OR selection was missing, recompute derived fields.
+          // (Also fine to always recompute; it's cheap.)
+          Object.assign(updated, derivePositionFields(updated, selected));
 
           next.set(m.symbol, updated);
           return next;
@@ -182,6 +217,23 @@ export default function Dashboard() {
     setZoomAnchorEl(null);
   };
 
+  const onSelectBroker = useCallback((tickerSymbol: string, broker: BrokerId) => {
+    setTickerMap((prev) => {
+      const existing = prev.get(tickerSymbol);
+      if (!existing) return prev;
+
+      const next = new Map(prev);
+      const updated: TickerLatestDTO = {
+        ...existing,
+        uiSelectedBroker: broker,
+        ...derivePositionFields(existing, broker),
+      };
+
+      next.set(tickerSymbol, updated);
+      return next;
+    });
+  }, []);
+
   const openQuickTrade = useCallback((tickerId: string, side: 'buy' | 'sell') => {
     setTradeTickerId(tickerId);
     setTradeSide(side);
@@ -191,18 +243,10 @@ export default function Dashboard() {
   const closeQuickTrade = useCallback(() => {
     setTradeOpen(false);
     setTradeTickerId(null);
-    // keep tradeSide as-is; doesn’t matter
   }, []);
 
-  // const onTrade = (id: string, side: TradeType) => {
-  //   console.log('trade', { id, side });
-  //   setQuickTickerId(id);
-  //   setQuickSide(side);
-  //   setQuickOpen(true);
-  // };
-
   const onChangeThreshold = async (tickerId: string, key: ThresholdKey, value: number) => {
-    // 1) optimistic update
+    // optimistic update
     let previous: number | undefined;
 
     setTickerMap((prevMap) => {
@@ -220,7 +264,7 @@ export default function Dashboard() {
       return next;
     });
 
-    // 2) persist to backend
+    // persist to backend
     try {
       await patchTickerThresholds(tickerId, { [key]: value } as any);
       // optional: show a tiny success toast or skip to avoid spam
@@ -260,9 +304,11 @@ export default function Dashboard() {
 
       <TickerGrid
         tickers={visibleTickers}
+        brokerLabels={brokerLabels}
         onZoom={onZoom}
         onTrade={(tickerId: string, side: TradeType) => openQuickTrade(tickerId, side)}
         onChangeThreshold={onChangeThreshold}
+        onSelectBroker={onSelectBroker}
       />
 
       <TickerCardTooltip open={Boolean(zoomTickerId)} anchorEl={zoomAnchorEl} ticker={zoomTicker} onClose={closeZoom} />

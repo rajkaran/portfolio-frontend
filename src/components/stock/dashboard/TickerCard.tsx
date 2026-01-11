@@ -1,20 +1,30 @@
-import { Box, Card, CardContent, IconButton, Stack, Typography } from '@mui/material';
+import { Box, Card, CardContent, Chip, IconButton, MenuItem, Select, Stack, Typography } from '@mui/material';
 import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import SellIcon from '@mui/icons-material/Sell';
-import { useRef } from 'react';
+import { useMemo, useRef } from 'react';
 
-import type { TickerLatestDTO } from '../../../types/stock/ticker.types';
+import type { BrokerId, TickerLatestDTO } from '../../../types/stock/ticker.types';
 import TimeAgo from '../shared/TimeAgo';
 import ThresholdMini from './ThresholdMini';
 import { THRESHOLD_COLORS } from '../../../constants/stockUI';
 import type { ThresholdKey } from '../../../constants/stockUI';
 
+function brokerQty(ticker: TickerLatestDTO, broker: BrokerId): number {
+  const q = ticker.positionsByBroker?.[broker]?.quantityHolding;
+  return typeof q === 'number' ? q : 0;
+}
+
+function brokerAvg(ticker: TickerLatestDTO, broker: BrokerId): number | null {
+  const a = ticker.positionsByBroker?.[broker]?.avgBookCost;
+  return typeof a === 'number' ? a : null;
+}
+
 function getBorderStatus(ticker: TickerLatestDTO): {
   color?: string;
   blink?: boolean;
 } {
-  const p = ticker.lastPrice;
+  const p = ticker.lastPrice ?? 0;
 
   // "Positive blink" only when avgBookCost exists and > 0
   const blinkAllowed = typeof ticker.avgBookCost === 'number' && ticker.avgBookCost > 0;
@@ -30,20 +40,129 @@ function getBorderStatus(ticker: TickerLatestDTO): {
 }
 
 
-export default function TickerCard({
-  ticker,
-  onZoom,
-  onTrade,
-  onChangeThreshold
-}: {
+export default function TickerCard(props: {
   ticker: TickerLatestDTO;
+  brokerLabels: Record<BrokerId, string>;
   onZoom: (id: string, anchorEl: HTMLElement | null) => void;
   onTrade: (id: string, side: 'buy' | 'sell') => void;
   onChangeThreshold: (tickerId: string, key: ThresholdKey, value: number) => void;
+  onSelectBroker: (symbol: string, broker: BrokerId) => void;
 }) {
-  const cardRef = useRef<HTMLDivElement | null>(null);
+  const { ticker, brokerLabels, onZoom, onTrade, onChangeThreshold, onSelectBroker } = props;
 
+  const cardRef = useRef<HTMLDivElement | null>(null);
   const border = getBorderStatus(ticker);
+
+  const FALLBACK_BROKER: BrokerId = 'wealthsimple';
+
+  const eligibleBrokers = useMemo(() => {
+    return (Object.keys(ticker.positionsByBroker ?? {}) as BrokerId[]).filter((b) => brokerQty(ticker, b) > 0);
+  }, [ticker]);
+
+  const showDropdown = eligibleBrokers.length >= 2;
+
+  const displayBroker: BrokerId =
+    (ticker.uiSelectedBroker as BrokerId | undefined) ??
+    eligibleBrokers[0] ??
+    FALLBACK_BROKER;
+
+  const fmt = (avg: number | null, qty: number) =>
+    avg != null ? `Avg ${avg.toFixed(2)} (${qty})` : `Qty (${qty})`;
+
+  const CAPTION_FONT = '0.65rem';
+
+  const leftPositionNode = showDropdown ? (
+    <Box sx={{ display: 'inline-flex', alignItems: 'center' }}>
+      <Select
+        variant="standard"
+        disableUnderline
+        value={displayBroker}
+        onChange={(e) => onSelectBroker(ticker.symbol, e.target.value as BrokerId)}
+        sx={{
+          // match the static caption look
+          fontSize: CAPTION_FONT,
+          lineHeight: 1,
+          opacity: 0.8,
+
+          // IMPORTANT: keep it tight like Typography (no forced width)
+          width: 'auto',
+          display: 'inline-flex',
+          alignItems: 'center',
+
+          // remove MUI hover/focus "input" feel
+          '&:hover': { backgroundColor: 'transparent' },
+          '&.Mui-focused': { backgroundColor: 'transparent' },
+
+          // the actual displayed value
+          '& .MuiSelect-select': {
+            fontSize: CAPTION_FONT,
+            lineHeight: 1,
+            display: 'inline-flex',
+            alignItems: 'center',
+            paddingTop: 0,
+            paddingBottom: 0,
+            paddingLeft: 0,
+
+            // THIS is the gap you’re fighting: reserve less room for the chevron
+            paddingRight: '14px !important',
+            minHeight: 'unset',
+          },
+
+          // move chevron closer + vertically center it
+          '& .MuiSelect-icon': {
+            right: 2,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            fontSize: '1.05rem', // slightly smaller reads better beside caption text
+          },
+        }}
+        renderValue={(value) => {
+          const b = value as BrokerId;
+          const avg = brokerAvg(ticker, b);
+          const qty = brokerQty(ticker, b);
+          return fmt(avg, qty); // "Avg 202.71 (10)"
+        }}
+        MenuProps={{
+          PaperProps: { sx: { mt: 0.5 } },
+        }}
+      >
+        {eligibleBrokers.map((b: BrokerId) => {
+          const avg = brokerAvg(ticker, b);
+          const qty = brokerQty(ticker, b);
+          return (
+            <MenuItem key={b} value={b}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  width: '100%',
+                  justifyContent: 'space-between',
+                  gap: 1,
+                }}
+              >
+                <Typography variant="caption" sx={{ fontSize: '0.7rem', lineHeight: 1 }}>
+                  {fmt(avg, qty)}
+                </Typography>
+
+                <Chip
+                  size="small"
+                  label={brokerLabels[b] ?? b}
+                  sx={{ height: 18, fontSize: '0.62rem' }}
+                />
+              </Box>
+            </MenuItem>
+          );
+        })}
+      </Select>
+    </Box>
+  ) : (
+    <Typography variant="caption" sx={{ opacity: 0.8, fontSize: CAPTION_FONT, lineHeight: 1 }}>
+      {typeof ticker.avgBookCost === 'number' ? `Avg ${ticker.avgBookCost.toFixed(2)}` : null}
+      {typeof ticker.quantityHolding === 'number' && ticker.quantityHolding > 0 ? ` (${ticker.quantityHolding})` : null}
+    </Typography>
+  );
+
+
 
   return (
     <Card
@@ -77,10 +196,7 @@ export default function TickerCard({
       >
         <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mx: 1 }}>
           <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-            {ticker.symbol + ' '}
-            <Box component="span" sx={{ fontWeight: 400, fontSize: '0.9em' }}>
-              ({ticker.quantityHolding})
-            </Box>
+            {ticker.symbol}
           </Typography>
 
           <Stack direction="row" spacing={0.5}>
@@ -116,7 +232,7 @@ export default function TickerCard({
         {/* Placeholder for your threshold-line visual */}
         <Box sx={{ mt: .5 }}>
           <ThresholdMini
-            currentPrice={ticker.lastPrice}
+            currentPrice={ticker.lastPrice ?? 0}
             thresholds={[
               { key: 'thresholdGreen', value: ticker.thresholdGreen },
               { key: 'thresholdCyan', value: ticker.thresholdCyan },
@@ -139,11 +255,7 @@ export default function TickerCard({
         >
           {/* Left: Avg book cost */}
           <Box sx={{ justifySelf: 'start' }}>
-            {typeof ticker.avgBookCost === 'number' ? (
-              <Typography variant="caption" sx={{ opacity: 0.8, fontSize: '0.65rem', lineHeight: 1 }}>
-                Avg {ticker.avgBookCost.toFixed(2)}
-              </Typography>
-            ) : null}
+            {leftPositionNode}
           </Box>
 
           {/* Center: Profit */}
@@ -171,7 +283,7 @@ export default function TickerCard({
           {/* Right: TimeAgo */}
           <Box sx={{ justifySelf: 'end' }}>
             {/* do the subtraction to get seconds */}
-            <TimeAgo updatedAtIso={ticker.tradeDatetime} />
+            <TimeAgo updatedAtIso={(ticker.tradeDatetime) ? ticker.tradeDatetime.toString() : ''} />
           </Box>
         </Box>
 

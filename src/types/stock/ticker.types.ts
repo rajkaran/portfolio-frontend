@@ -1,6 +1,7 @@
 export type Market = 'canada' | 'usa' | 'india';
 export type StockClass = 'dividend' | 'trade' | 'longTerm';
 export type Bucket = 'core' | 'watch' | 'once' | 'avoid';
+export type BrokerId = 'wealthsimple' | 'questrade' | 'td';
 
 export type ThresholdPatch = Partial<{
   thresholdGreen: number;
@@ -17,32 +18,46 @@ export type TickerOption = {
   bucket?: string;
 };
 
+export type BrokerPositionSnapshotDTO = {
+  avgBookCost?: number | null;
+  quantityHolding?: number | null;
+  lastAppliedTradeDatetime?: string | Date | null;
+  anchorTradeDatetime?: string | Date | null;
+  isPositionDirty?: boolean | null;
+  dirtySinceTradeDatetime?: string | Date | null;
+};
+
 export type TickerLatestDTO = {
   id: string;
   symbol: string;
-  symbolId: number;
-
   companyName?: string;
   market: string;
   stockClasses: string[];
   industry: string;
   bucket: string;
 
-  lastPrice: number;
-  bidPrice: number;
-  askPrice: number;
-  volume: number;
-  updateDatetime: string;
-  tradeDatetime: string;
-
-  avgBookCost?: number,
-  quantityHolding?: number,
-  totalReturn?: number,
+  symbolId?: number | null;
+  lastPrice?: number | null;
+  bidPrice?: number | null;
+  askPrice?: number | null;
+  volume?: number | null;
+  updateDatetime?: string | Date | null;
+  tradeDatetime?: string | Date | null;
 
   thresholdGreen: number;
   thresholdCyan: number;
   thresholdOrange: number;
   thresholdRed: number;
+
+  positionsByBroker?: Partial<Record<BrokerId, BrokerPositionSnapshotDTO>>;
+
+  // UI-only (stored in state, not backend)
+  uiSelectedBroker?: BrokerId;
+
+  // keep these derived fields
+  avgBookCost?: number | null;
+  quantityHolding?: number | null;
+  totalReturn?: number;
 };
 
 export type TickerDTO = {

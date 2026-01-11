@@ -66,8 +66,7 @@ export async function listTickerLatest(market?: Market, stockClass?: StockClass)
       updateDatetime: true,
       tradeDatetime: true,
 
-      avgBookCost: true,
-      quantityHolding: true,
+      positionsByBroker: true,
 
       thresholdGreen: true,
       thresholdCyan: true,
