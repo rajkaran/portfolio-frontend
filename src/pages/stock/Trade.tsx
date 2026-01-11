@@ -20,21 +20,21 @@ import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined
 
 import { listTickerLatest } from '../../services/stock/ticker-api';
 import { deleteTrade, listTrades } from '../../services/stock/trade-api';
-import type { Broker, TradeDTO, TradeType } from '../../types/stock/trade.types';
+import type { TradeDTO, TradeType } from '../../types/stock/trade.types';
 import { useTickerOptions } from '../../hooks/stock/useTickerOptions';
 import { CreateTradeDialog } from '../../components/stock/shared/CreateTradeDialog';
-import type { TickerOption } from '../../types/stock/ticker.types';
+import type { BrokerId, Bucket, TickerOption } from '../../types/stock/ticker.types';
 import { TickerAutosuggest } from '../../components/stock/shared/TickerAutosuggest';
-import { BrokerSelect } from '../../components/stock/shared/BrokerSelect';
+import { BrokerSelect, type BrokerItem } from '../../components/stock/shared/BrokerSelect';
 
 type TickerLite = {
   id: string;
   symbol: string;
   companyName?: string;
-  lastPrice?: number;
-  avgBookCost?: number;
-  quantityHolding?: number;
+  bucket?: Bucket;
 };
+
+const DEFAULT_BROKER: BrokerId = 'wealthsimple';
 
 export default function Trade() {
   const { showSnackbar } = useSnackbar();
@@ -47,17 +47,26 @@ export default function Trade() {
   // filters
   const [filterSymbols, setFilterSymbols] = useState<string[]>([]);
   const [filterType, setFilterType] = useState<TradeType | ''>('');
-  const [filterBroker, setFilterBroker] = useState<Broker | ''>(''); // '' = All
+  const [filterBroker, setFilterBroker] = useState<BrokerId | ''>(''); // '' = All
 
   // dialog
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<TradeDTO | null>(null);
 
   // known brokers
-  const brokerItems = useMemo(
-    () => (options ? Object.entries(options.broker).map(([value, label]) => ({ value: value, label })) : []),
-    [options]
-  );
+  const brokerItems: BrokerItem[] = useMemo(() => {
+    if (!options?.broker) return [];
+    return Object.entries(options.broker).map(([value, label]) => ({
+      value: value as BrokerId,
+      label: String(label),
+    }));
+  }, [options]);
+
+  const brokerLabels = useMemo(() => {
+    const m: Partial<Record<BrokerId, string>> = {};
+    for (const b of brokerItems) m[b.value] = b.label;
+    return m;
+  }, [brokerItems]);
 
   // ---- initialValues for edit mode ----
   const dialogInitialValues = useMemo(() => {
@@ -66,7 +75,7 @@ export default function Trade() {
     return {
       tickerId: editing.tickerId,
       tradeType: editing.tradeType,
-      broker: editing.broker ?? '',
+      broker: editing.broker ?? DEFAULT_BROKER,
       rate: String(editing.rate ?? ''),
       quantity: String(editing.quantity ?? '1'),
       totalAmount: String(editing.totalAmount ?? ''),
@@ -79,8 +88,7 @@ export default function Trade() {
   }, [editing]);
 
 
-  async function loadAll() {
-    setLoading(true);
+  async function loadTickers() {
     try {
       const t = await listTickerLatest();
       setTickers(
@@ -88,15 +96,20 @@ export default function Trade() {
           id: x.id,
           symbol: x.symbol,
           companyName: x.companyName,
-          lastPrice: x.lastPrice,
-          avgBookCost: x.avgBookCost,
-          quantityHolding: x.quantityHolding,
+          bucket: x.bucket,
         })),
       );
+    } catch (e: any) {
+      showSnackbar(e?.message ?? 'Failed to load tickers', { severity: 'error' });
+    }
+  }
 
+  async function loadTrades() {
+    setLoading(true);
+    try {
       const tr = await listTrades({
         symbols: filterSymbols.length ? filterSymbols : undefined,
-        tradeType: (filterType as any) || undefined,
+        tradeType: filterType || undefined,
         broker: filterBroker || undefined,
       });
       setTrades(tr);
@@ -107,13 +120,15 @@ export default function Trade() {
     }
   }
 
+
   const tickerOptions: TickerOption[] = useMemo(
-    () => tickers.map(t => ({
-      id: t.id,
-      symbol: t.symbol,
-      companyName: t.companyName,
-      // bucket optional
-    })),
+    () =>
+      tickers.map((t) => ({
+        id: t.id,
+        symbol: t.symbol,
+        companyName: t.companyName,
+        bucket: t.bucket,
+      })),
     [tickers]
   );
 
@@ -128,7 +143,12 @@ export default function Trade() {
   );
 
   useEffect(() => {
-    loadAll();
+    loadTickers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    loadTrades();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterSymbols, filterType, filterBroker]);
 
@@ -149,7 +169,7 @@ export default function Trade() {
     try {
       await deleteTrade(t.id);
       showSnackbar('Trade deleted', { severity: 'success' });
-      await loadAll();
+      await loadTrades();
     } catch (e: any) {
       showSnackbar(e?.message ?? 'Delete failed', { severity: 'error' });
     }
@@ -206,7 +226,8 @@ export default function Trade() {
           disabled={optionsLoading}
           items={brokerItems}
           includeAllOption
-          label="All Brokers"
+          allLabel="All Brokers"
+          label="Broker"
         />
       </Box>
 
@@ -253,7 +274,7 @@ export default function Trade() {
             <Box>{t.rate}</Box>
             <Box>{t.quantity}</Box>
             <Box>{t.tradeType === 'sell' ? (t.profit ?? '-') : '-'}</Box>
-            <Box>{t.broker}</Box>
+            <Box>{t.broker ? (brokerLabels[t.broker] ?? t.broker) : '-'}</Box>
             <Box>{new Date(t.tradeDatetime).toLocaleString()}</Box>
             <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 0.5 }}>
               <Tooltip title="Edit">
@@ -288,7 +309,7 @@ export default function Trade() {
       <CreateTradeDialog
         open={open}
         onClose={() => setOpen(false)}
-        onSaved={loadAll}
+        onSaved={loadTrades}
         mode="full"
         tickers={tickerOptions}
         brokerItems={brokerItems}

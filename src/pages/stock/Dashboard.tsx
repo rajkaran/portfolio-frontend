@@ -19,6 +19,7 @@ import { CreateTradeDialog } from '../../components/stock/shared/CreateTradeDial
 import type { TradeType, TradeWsMsg } from '../../types/stock/trade.types';
 import { useTickerOptions } from '../../hooks/stock/useTickerOptions';
 import { derivePositionFields, pickDefaultBroker } from '../../utils/stock/DashboardUtil';
+import type { BrokerItem } from '../../components/stock/shared/BrokerSelect';
 
 const toIso = (v: string | Date | null | undefined) =>
   !v ? null : (typeof v === 'string' ? new Date(v).toISOString() : v.toISOString());
@@ -66,10 +67,13 @@ export default function Dashboard() {
   );
 
   // known brokers
-  const brokerItems = useMemo(
-    () => (options ? Object.entries(options.broker).map(([value, label]) => ({ value: value, label })) : []),
-    [options]
-  );
+  const brokerItems: BrokerItem[] = useMemo(() => {
+    if (!options?.broker) return [];
+    return Object.entries(options.broker).map(([value, label]) => ({
+      value: value as BrokerId,
+      label: String(label),
+    }));
+  }, [options]);
 
   const brokerLabels = useMemo(() => {
     const m = {} as Record<BrokerId, string>;

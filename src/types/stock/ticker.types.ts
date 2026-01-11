@@ -15,7 +15,7 @@ export type TickerOption = {
   id: string;
   symbol: string;
   companyName?: string;
-  bucket?: string;
+  bucket?: Bucket;
 };
 
 export type BrokerPositionSnapshotDTO = {
