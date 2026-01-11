@@ -2,13 +2,13 @@ import { Box, Card, CardContent, Chip, IconButton, MenuItem, Select, Stack, Typo
 import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import SellIcon from '@mui/icons-material/Sell';
-import { useMemo, useRef } from 'react';
 
 import type { BrokerId, TickerLatestDTO } from '../../../types/stock/ticker.types';
 import TimeAgo from '../shared/TimeAgo';
 import ThresholdMini from './ThresholdMini';
 import { THRESHOLD_COLORS } from '../../../constants/stockUI';
 import type { ThresholdKey } from '../../../constants/stockUI';
+import { useRef } from 'react';
 
 function brokerQty(ticker: TickerLatestDTO, broker: BrokerId): number {
   const q = ticker.positionsByBroker?.[broker]?.quantityHolding;
@@ -55,14 +55,11 @@ export default function TickerCard(props: {
 
   const FALLBACK_BROKER: BrokerId = 'wealthsimple';
 
-  const eligibleBrokers = useMemo(() => {
-    return (Object.keys(ticker.positionsByBroker ?? {}) as BrokerId[]).filter((b) => brokerQty(ticker, b) > 0);
-  }, [ticker]);
-
+  const eligibleBrokers = (Object.keys(ticker.positionsByBroker ?? {}) as BrokerId[]).filter((b) => brokerQty(ticker, b) > 0);
   const showDropdown = eligibleBrokers.length >= 2;
 
   const displayBroker: BrokerId =
-    (ticker.uiSelectedBroker as BrokerId | undefined) ??
+    (ticker.uiSelectedBroker && eligibleBrokers.includes(ticker.uiSelectedBroker) ? ticker.uiSelectedBroker : undefined) ??
     eligibleBrokers[0] ??
     FALLBACK_BROKER;
 
@@ -161,8 +158,6 @@ export default function TickerCard(props: {
       {typeof ticker.quantityHolding === 'number' && ticker.quantityHolding > 0 ? ` (${ticker.quantityHolding})` : null}
     </Typography>
   );
-
-
 
   return (
     <Card
@@ -283,7 +278,7 @@ export default function TickerCard(props: {
           {/* Right: TimeAgo */}
           <Box sx={{ justifySelf: 'end' }}>
             {/* do the subtraction to get seconds */}
-            <TimeAgo updatedAtIso={(ticker.tradeDatetime) ? ticker.tradeDatetime.toString() : ''} />
+            <TimeAgo updatedAtIso={(ticker.tradeDatetime) ?? ''} />
           </Box>
         </Box>
 

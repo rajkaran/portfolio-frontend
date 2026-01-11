@@ -20,6 +20,9 @@ import type { TradeType, TradeWsMsg } from '../../types/stock/trade.types';
 import { useTickerOptions } from '../../hooks/stock/useTickerOptions';
 import { derivePositionFields, pickDefaultBroker } from '../../utils/stock/DashboardUtil';
 
+const toIso = (v: string | Date | null | undefined) =>
+  !v ? null : (typeof v === 'string' ? new Date(v).toISOString() : v.toISOString());
+
 export default function Dashboard() {
   const { showSnackbar } = useSnackbar();
   const { options } = useTickerOptions(true);
@@ -90,6 +93,8 @@ export default function Dashboard() {
         const normalized: TickerLatestDTO = {
           ...raw,
           positionsByBroker: raw.positionsByBroker ?? {},
+          updateDatetime: toIso(raw.updateDatetime),
+          tradeDatetime: toIso(raw.tradeDatetime),
         };
 
         const selected = normalized.uiSelectedBroker ?? pickDefaultBroker(normalized);
@@ -128,8 +133,8 @@ export default function Dashboard() {
             bidPrice: u.bid ?? existing.bidPrice,
             askPrice: u.ask ?? existing.askPrice,
             volume: u.volume ?? existing.volume,
-            updateDatetime: u.tradeDatetime,
-            tradeDatetime: u.tradeDatetime,
+            updateDatetime: toIso(u.tradeDatetime),
+            tradeDatetime: toIso(u.tradeDatetime),
             symbolId: u.symbolId ?? existing.symbolId,
           };
 

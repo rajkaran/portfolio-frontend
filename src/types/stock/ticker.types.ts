@@ -21,28 +21,28 @@ export type TickerOption = {
 export type BrokerPositionSnapshotDTO = {
   avgBookCost?: number | null;
   quantityHolding?: number | null;
-  lastAppliedTradeDatetime?: string | Date | null;
-  anchorTradeDatetime?: string | Date | null;
+  lastAppliedTradeDatetime?: string | null;
+  anchorTradeDatetime?: string | null;
   isPositionDirty?: boolean | null;
-  dirtySinceTradeDatetime?: string | Date | null;
+  dirtySinceTradeDatetime?: string | null;
 };
 
 export type TickerLatestDTO = {
   id: string;
   symbol: string;
   companyName?: string;
-  market: string;
-  stockClasses: string[];
+  market: Market;
+  stockClasses: StockClass[];
   industry: string;
-  bucket: string;
+  bucket: Bucket;
 
   symbolId?: number | null;
   lastPrice?: number | null;
   bidPrice?: number | null;
   askPrice?: number | null;
   volume?: number | null;
-  updateDatetime?: string | Date | null;
-  tradeDatetime?: string | Date | null;
+  updateDatetime?: string | null;
+  tradeDatetime?: string | null;
 
   thresholdGreen: number;
   thresholdCyan: number;

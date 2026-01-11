@@ -2,7 +2,6 @@ import type { BrokerId } from "./ticker.types";
 
 export type TradeType = 'buy' | 'sell';
 export type TradeDialogMode = 'quick' | 'full';
-export type Broker = 'wealthsimple' | 'questrade' | 'td' ;
 
 export type TradeDTO = {
   id: string;
@@ -14,7 +13,7 @@ export type TradeDTO = {
   totalAmount?: number;
 
   brokerageFee?: number;
-  broker?: string;
+  broker?: BrokerId;
 
   tradeType: TradeType;
 

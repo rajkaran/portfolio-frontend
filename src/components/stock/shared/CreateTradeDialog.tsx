@@ -4,8 +4,8 @@ import {
   Button, Box, TextField, FormControl, InputLabel, Select, MenuItem,
 } from '@mui/material';
 
-import type { TickerOption } from '../../../types/stock/ticker.types';
-import type { Broker, CreateTradeDTO, TradeDialogMode, TradeType } from '../../../types/stock/trade.types';
+import type { BrokerId, TickerOption } from '../../../types/stock/ticker.types';
+import type { CreateTradeDTO, TradeDialogMode, TradeType } from '../../../types/stock/trade.types';
 import { createTrade, updateTrade } from '../../../services/stock/trade-api';
 import { SingleTickerSelect } from './SingleTickerSelect';
 import { BrokerSelect, type BrokerItem } from './BrokerSelect';
@@ -14,7 +14,7 @@ type FormState = {
   symbol: string;
   tickerId: string;
   tradeType: TradeType;
-  broker: string;
+  broker: BrokerId;
   rate: string;      // keep as string so it can be blank
   quantity: string;  // same idea
   totalAmount: string; // same idea
@@ -25,7 +25,7 @@ type FormState = {
   overrideQuantityHolding: string;
 };
 
-const DEFAULT_BROKER = 'wealthsimple';
+const DEFAULT_BROKER: BrokerId = 'wealthsimple';
 
 // ----- datetime helpers -----
 // Convert ISO -> "YYYY-MM-DDTHH:mm" for <input type="datetime-local">
@@ -298,7 +298,7 @@ export function CreateTradeDialog(props: {
 
   const brokerField = (
     <BrokerSelect
-      value={(form.broker as Broker) ?? 'wealthsimple'}
+      value={(form.broker as BrokerId) ?? 'wealthsimple'}
       onChange={(v) => setForm(p => ({ ...p, broker: v as any }))}
       items={props.brokerItems as any}
       disabled={saving}
