@@ -1,4 +1,4 @@
-import type { Market, StockClass, TickerDTO, CreateTickerDTO, UpdateTickerDTO, ThresholdPatch, SymbolSuggestDTO } from '../../types/stock/ticker.types';
+import type { Market, StockClass, TickerDTO, CreateTickerDTO, UpdateTickerDTO, ThresholdPatch, SymbolSuggestDTO, TickerLatestDTO } from '../../types/stock/ticker.types';
 import { loopbackApi } from "./loopback-api";
 
 export async function listTickers(params?: { market?: Market; stockClass?: StockClass }) {
@@ -36,7 +36,7 @@ export async function listTickers(params?: { market?: Market; stockClass?: Stock
   return res.data;
 }
 
-export async function listTickerLatest(market?: Market, stockClass?: StockClass) {
+export async function listTickerLatest(market?: Market, stockClass?: StockClass): Promise<TickerLatestDTO[]> {
   const and: Array<Record<string, unknown>> = [];
 
   if (market) and.push({ market: market });
