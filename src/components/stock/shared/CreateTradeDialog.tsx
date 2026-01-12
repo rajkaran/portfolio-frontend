@@ -21,8 +21,6 @@ type FormState = {
   profit: string;   // same idea
   tradeDatetimeIso: string; // ISO string or local formatted, depending on your existing picker
   brokerageFee: string;               // store as string for TextField
-  overrideAvgBookCost: string;
-  overrideQuantityHolding: string;
 };
 
 const DEFAULT_BROKER: BrokerId = 'wealthsimple';
@@ -64,8 +62,6 @@ function resetForm(preset?: { tickerId?: string; type?: TradeType }): FormState 
     profit: '',
     tradeDatetimeIso: nowIso(),
     brokerageFee: '0',
-    overrideAvgBookCost: '',
-    overrideQuantityHolding: '',
   };
 }
 
@@ -162,8 +158,6 @@ export function CreateTradeDialog(props: {
     const totalAmountNum = Number(form.totalAmount);
     const profitNum = form.profit.trim() ? Number(form.profit) : null;
     const feeNum = form.brokerageFee.trim() === '' ? 0 : Number(form.brokerageFee);
-    const oAvg = form.overrideAvgBookCost.trim() === '' ? null : Number(form.overrideAvgBookCost);
-    const oQty = form.overrideQuantityHolding.trim() === '' ? null : Number(form.overrideQuantityHolding);
 
     if (!Number.isFinite(rateNum) || rateNum <= 0) return;
     if (!Number.isFinite(qtyNum) || qtyNum <= 0) return;
@@ -187,8 +181,6 @@ export function CreateTradeDialog(props: {
 
       brokerageFee: Number.isFinite(feeNum) ? feeNum : 0,
 
-      ...(oAvg != null && Number.isFinite(oAvg) ? { overrideAvgBookCost: oAvg } : {}),
-      ...(oQty != null && Number.isFinite(oQty) ? { overrideQuantityHolding: oQty } : {}),
       ...(profitNum != null ? { profit: profitNum } : {}),
     };
 
@@ -338,28 +330,6 @@ export function CreateTradeDialog(props: {
     />
   ) : null;
 
-  const overrideAvgBookCostField = (
-    <TextField
-      size="small"
-      label="Override Avg Book Cost (optional)"
-      type="number"
-      value={form.overrideAvgBookCost}
-      onChange={(e) => setForm(p => ({ ...p, overrideAvgBookCost: e.target.value }))}
-      inputProps={{ step: '0.0001' }}
-    />
-  );
-
-  const overrideQuantityHoldingField = (
-    <TextField
-      size="small"
-      label="Override Quantity Holding (optional)"
-      type="number"
-      value={form.overrideQuantityHolding}
-      onChange={(e) => setForm(p => ({ ...p, overrideQuantityHolding: e.target.value }))}
-      inputProps={{ step: '1' }}
-    />
-  );
-
   return (
     <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
       <DialogTitle>{editingTradeId ? 'Edit Trade' : 'Record Trade'}</DialogTitle>
@@ -395,8 +365,6 @@ export function CreateTradeDialog(props: {
                 {profitField}
                 {totalAmountField}
                 {tradeDatetimeField}
-                {overrideAvgBookCostField}
-                {overrideQuantityHoldingField}
               </>
             )}
 
