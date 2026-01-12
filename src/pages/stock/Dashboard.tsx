@@ -42,9 +42,7 @@ export default function Dashboard() {
   const [tradeSide, setTradeSide] = useState<'buy' | 'sell'>('buy');
 
 
-  // TODO: get the quick buy and sell from dahsbord
-  // TODO: get the sort workingon dashboard
-  // TODO: make trade page look better
+  // TODO: get the sort working on dashboard
   // TODO: add a page to record dividends.
   // TODO: create dividend tiles and notifications through emails
   // TODO: complete favorability bar
