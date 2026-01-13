@@ -7,7 +7,6 @@ import RightFavorableBar from '../../components/stock/dashboard/RightFavorableBa
 import TickerGrid from '../../components/stock/dashboard/TickerGrid';
 import { defaultStockFilters, type BrokerId, type StockFilters, type TickerLatestDTO, type TickerOption } from '../../types/stock/ticker.types';
 import { applyFilters } from '../../utils/stock/filter';
-import { favorabilityScore } from '../../utils/stock/favorability';
 import TickerCardTooltip from '../../components/stock/dashboard/TickerDetailTooltip';
 import { listTickerLatest } from '../../services/stock/ticker-api';
 import { connectPricesWs } from '../../services/stock/prices-ws';
@@ -32,6 +31,7 @@ export default function Dashboard() {
   const [filters, setFilters] = useState(defaultStockFilters);
   const [zoomTickerId, setZoomTickerId] = useState<string | null>(null);
   const [zoomAnchorEl, setZoomAnchorEl] = useState<HTMLElement | null>(null);
+  const [silencedById, setSilencedById] = useState<Record<string, boolean>>({});
 
   // snapshot state
   const [tickerMap, setTickerMap] = useState<Map<string, TickerLatestDTO>>(new Map());
@@ -197,8 +197,14 @@ export default function Dashboard() {
 
   const visibleTickers = useMemo(() => {
     const filtered = applyFilters(tickers, filters);
-    return [...filtered].sort((a, b) => compareBySort(a, b, filters.sortBy));
-  }, [tickers, filters]);
+    return [...filtered].sort((a, b) =>
+      compareBySort(a, b, filters.sortBy, { silencedById })
+    );
+  }, [tickers, filters, silencedById]);
+
+  const toggleSilenced = useCallback((tickerId: string) => {
+    setSilencedById((prev) => ({ ...prev, [tickerId]: !prev[tickerId] }));
+  }, []);
 
   const onFiltersChange = (next: StockFilters) => {
     const marketChanged = next.market !== filters.market;
@@ -317,6 +323,8 @@ export default function Dashboard() {
         onTrade={(tickerId: string, side: TradeType) => openQuickTrade(tickerId, side)}
         onChangeThreshold={onChangeThreshold}
         onSelectBroker={onSelectBroker}
+        silencedById={silencedById}
+        onToggleSilence={toggleSilenced}
       />
 
       <TickerCardTooltip open={Boolean(zoomTickerId)} anchorEl={zoomAnchorEl} ticker={zoomTicker} onClose={closeZoom} />

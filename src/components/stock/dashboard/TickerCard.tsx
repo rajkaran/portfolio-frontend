@@ -2,6 +2,8 @@ import { Box, Card, CardContent, Chip, IconButton, MenuItem, Select, Stack, Typo
 import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import SellIcon from '@mui/icons-material/Sell';
+import NotificationsOffIcon from '@mui/icons-material/NotificationsOff';
+import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 
 import type { BrokerId, TickerLatestDTO } from '../../../types/stock/ticker.types';
 import TimeAgo from '../shared/TimeAgo';
@@ -47,8 +49,10 @@ export default function TickerCard(props: {
   onTrade: (id: string, side: 'buy' | 'sell') => void;
   onChangeThreshold: (tickerId: string, key: ThresholdKey, value: number) => void;
   onSelectBroker: (symbol: string, broker: BrokerId) => void;
+  silenced: boolean;
+  onToggleSilence: (tickerId: string) => void;
 }) {
-  const { ticker, brokerLabels, onZoom, onTrade, onChangeThreshold, onSelectBroker } = props;
+  const { ticker, brokerLabels, onZoom, onTrade, onChangeThreshold, onSelectBroker, silenced, onToggleSilence } = props;
 
   const cardRef = useRef<HTMLDivElement | null>(null);
   const border = getBorderStatus(ticker);
@@ -194,7 +198,7 @@ export default function TickerCard(props: {
             {ticker.symbol}
           </Typography>
 
-          <Stack direction="row" spacing={0.5}>
+          <Stack direction="row" spacing={0.1}>
             <IconButton
               size="small"
               onClick={() => onZoom(ticker.id, cardRef.current)}
@@ -220,6 +224,19 @@ export default function TickerCard(props: {
               aria-label="Sell"
             >
               <SellIcon fontSize="small" />
+            </IconButton>
+
+            <IconButton
+              size="small"
+              onClick={() => onToggleSilence(ticker.id)}
+              title={silenced ? 'Unsilence buy signal' : 'Silence buy signal'}
+              aria-label={silenced ? 'Unsilence' : 'Silence'}
+            >
+              {silenced ? (
+                <NotificationsOffIcon fontSize="small" />
+              ) : (
+                <NotificationsActiveIcon fontSize="small" />
+              )}
             </IconButton>
           </Stack>
         </Stack>

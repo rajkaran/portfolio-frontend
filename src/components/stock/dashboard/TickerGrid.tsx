@@ -10,6 +10,8 @@ export default function TickerGrid({
   onTrade,
   onChangeThreshold,
   onSelectBroker,
+  silencedById,
+  onToggleSilence,
 }: {
   tickers: TickerLatestDTO[];
   brokerLabels: Record<BrokerId, string>;
@@ -17,6 +19,8 @@ export default function TickerGrid({
   onTrade: (id: string, side: 'buy' | 'sell') => void;
   onChangeThreshold: (tickerId: string, key: ThresholdKey, value: number) => void;
   onSelectBroker: (symbol: string, broker: BrokerId) => void;
+  silencedById: Record<string, boolean>;
+  onToggleSilence: (tickerId: string) => void;
 }) {
   return (
     <Box sx={{ mt: 2 }}>
@@ -38,6 +42,8 @@ export default function TickerGrid({
             onTrade={onTrade}
             onChangeThreshold={onChangeThreshold}
             onSelectBroker={onSelectBroker}
+            silenced={!!silencedById[t.id]}
+            onToggleSilence={onToggleSilence}
           />
         ))}
       </Box>
