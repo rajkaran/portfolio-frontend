@@ -20,6 +20,7 @@ import type { TradeType, TradeWsMsg } from '../../types/stock/trade.types';
 import { useTickerOptions } from '../../hooks/stock/useTickerOptions';
 import { derivePositionFields, pickDefaultBroker } from '../../utils/stock/DashboardUtil';
 import type { BrokerItem } from '../../components/stock/shared/BrokerSelect';
+import { compareBySort } from '../../utils/stock/tickerSorting';
 
 const toIso = (v: string | Date | null | undefined) =>
   !v ? null : (typeof v === 'string' ? new Date(v).toISOString() : v.toISOString());
@@ -196,7 +197,7 @@ export default function Dashboard() {
 
   const visibleTickers = useMemo(() => {
     const filtered = applyFilters(tickers, filters);
-    return filtered.sort((a, b) => favorabilityScore(b) - favorabilityScore(a));
+    return [...filtered].sort((a, b) => compareBySort(a, b, filters.sortBy));
   }, [tickers, filters]);
 
   const onFiltersChange = (next: StockFilters) => {

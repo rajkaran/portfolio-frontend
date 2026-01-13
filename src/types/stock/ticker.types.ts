@@ -95,6 +95,6 @@ export type StockFilters = {
 export const defaultStockFilters: StockFilters = {
   market: 'canada',
   stockClass: 'trade',
-  sortBy: 'az',
+  sortBy: 'bucket',
   symbols: [],
 };
