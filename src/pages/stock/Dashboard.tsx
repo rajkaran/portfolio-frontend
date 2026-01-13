@@ -19,7 +19,7 @@ import type { TradeType, TradeWsMsg } from '../../types/stock/trade.types';
 import { useTickerOptions } from '../../hooks/stock/useTickerOptions';
 import { derivePositionFields, pickDefaultBroker } from '../../utils/stock/DashboardUtil';
 import type { BrokerItem } from '../../components/stock/shared/BrokerSelect';
-import { compareBySort } from '../../utils/stock/tickerSorting';
+import { compareBySort, isFavorable } from '../../utils/stock/tickerSorting';
 
 const toIso = (v: string | Date | null | undefined) =>
   !v ? null : (typeof v === 'string' ? new Date(v).toISOString() : v.toISOString());
@@ -206,6 +206,25 @@ export default function Dashboard() {
     setSilencedById((prev) => ({ ...prev, [tickerId]: !prev[tickerId] }));
   }, []);
 
+  // Persist silences across refresh
+  useEffect(() => {
+    const raw = localStorage.getItem("silencedById");
+    if (raw) setSilencedById(JSON.parse(raw));
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("silencedById", JSON.stringify(silencedById));
+  }, [silencedById]);
+
+  const favorableTickers = useMemo(() => {
+    const fav = tickers
+      .filter(t => isFavorable(t, { silencedBuy: !!silencedById[t.id] }))
+      .sort((a, b) => compareBySort(a, b, "favorability", { silencedById }));
+
+    // Cap the Favorable bar list (so it doesn’t become an infinite scroll on wild days):
+    return fav.slice(0, 20);
+  }, [tickers, silencedById]);
+
   const onFiltersChange = (next: StockFilters) => {
     const marketChanged = next.market !== filters.market;
     const classChanged = next.stockClass !== filters.stockClass;
@@ -302,7 +321,20 @@ export default function Dashboard() {
   };
 
   return (
-    <StockShell right={({ closeRight }) => <RightFavorableBar onClose={closeRight} />} >
+    <StockShell
+      right={({ closeRight }) => (
+        <RightFavorableBar
+          onClose={closeRight}
+          tickers={favorableTickers}
+          brokerLabels={brokerLabels}
+          onTrade={(tickerId, side) => openQuickTrade(tickerId, side)}
+          onChangeThreshold={onChangeThreshold}
+          onSelectBroker={onSelectBroker}
+          silencedById={silencedById}
+          onToggleSilence={toggleSilenced}
+        />
+      )}
+    >
       <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', mb: 1 }}>
         <Typography variant="h5" sx={{ fontWeight: 500 }}>
           Dashboard

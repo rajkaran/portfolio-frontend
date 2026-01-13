@@ -51,8 +51,9 @@ export default function TickerCard(props: {
   onSelectBroker: (symbol: string, broker: BrokerId) => void;
   silenced: boolean;
   onToggleSilence: (tickerId: string) => void;
+  showZoom?: boolean;
 }) {
-  const { ticker, brokerLabels, onZoom, onTrade, onChangeThreshold, onSelectBroker, silenced, onToggleSilence } = props;
+  const { ticker, brokerLabels, onZoom, onTrade, onChangeThreshold, onSelectBroker, silenced, onToggleSilence, showZoom = true } = props;
 
   const cardRef = useRef<HTMLDivElement | null>(null);
   const border = getBorderStatus(ticker);
@@ -199,14 +200,16 @@ export default function TickerCard(props: {
           </Typography>
 
           <Stack direction="row" spacing={0.1}>
-            <IconButton
-              size="small"
-              onClick={() => onZoom(ticker.id, cardRef.current)}
-              title="Zoom"
-              aria-label="Zoom"
-            >
-              <ZoomInIcon fontSize="small" />
-            </IconButton>
+            {showZoom ? (
+              <IconButton
+                size="small"
+                onClick={() => onZoom(ticker.id, cardRef.current)}
+                title="Zoom"
+                aria-label="Zoom"
+              >
+                <ZoomInIcon fontSize="small" />
+              </IconButton>
+            ) : null}
 
             <IconButton
               size="small"
