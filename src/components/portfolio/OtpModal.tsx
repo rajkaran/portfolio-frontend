@@ -7,7 +7,7 @@ import {
     Button,
 } from '@mui/material';
 import axios from 'axios';
-import { useSnackbar } from './SnackbarProvider';
+import { useSnackbar } from '../shared/SnackbarProvider';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 

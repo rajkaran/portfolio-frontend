@@ -5,10 +5,10 @@ import ChatInput from './ChatInput';
 import ChatIntro from './ChatIntro';
 import RegisterModal from './RegisterModal';
 import OtpModal from './OtpModal';
-import type { User } from '../types/user.types';
-import type { PromptHistory, PromptPair } from '../types/prompt.types';
-import { setItem, getItem } from '../utils/localStorage';
-import { useSnackbar } from './SnackbarProvider';
+import type { User } from '../../types/portfolio/user.types';
+import type { PromptHistory, PromptPair } from '../../types/portfolio/prompt.types';
+import { setItem, getItem } from '../../utils/localStorage';
+import { useSnackbar } from '../shared/SnackbarProvider';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 

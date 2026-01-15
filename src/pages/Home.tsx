@@ -1,7 +1,7 @@
 import { Container } from '@mui/material';
-import ChatBox from '../components/ChatBox';
-import Navbar from '../components/Navbar';
-import IntroSection from '../components/IntroSection';
+import ChatBox from '../components/portfolio/ChatBox';
+import Navbar from '../components/portfolio/Navbar';
+import IntroSection from '../components/portfolio/IntroSection';
 
 export default function Home() {
     return (

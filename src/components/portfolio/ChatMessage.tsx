@@ -7,10 +7,10 @@ import ReportIcon from '@mui/icons-material/Report';
 import Paper from '@mui/material/Paper';
 import Tooltip from '@mui/material/Tooltip';
 import ArrowDropDownCircleIcon from '@mui/icons-material/ArrowDropDownCircle';
-import type { User } from '../types/user.types';
+import type { User } from '../../types/portfolio/user.types';
 import ReportPromptModal from './ReportPromptModal';
 import axios from 'axios';
-import { useSnackbar } from './SnackbarProvider';
+import { useSnackbar } from '../shared/SnackbarProvider';
 
 type Props = {
     id: string;

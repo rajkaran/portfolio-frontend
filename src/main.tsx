@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
 import { CssBaseline, ThemeProvider, createTheme } from '@mui/material';
-import { SnackbarProvider } from './components/SnackbarProvider';
+import { SnackbarProvider } from './components/shared/SnackbarProvider.tsx';
 
 const theme = createTheme({
   palette: {
