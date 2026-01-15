@@ -102,7 +102,7 @@ export default function TickerCardTooltip({
 
       <Box sx={{ p: 1.25 }}>
         <Typography variant="body2">
-          Current: <b>${ticker.lastPrice.toFixed(2)}</b>
+          Current: <b>${ticker?.lastPrice?.toFixed(2)}</b>
         </Typography>
 
         <Box
