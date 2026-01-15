@@ -1,5 +1,7 @@
-import { Box, Typography } from '@mui/material';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Box, IconButton, Tooltip, Typography } from '@mui/material';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import VolumeUpIcon from "@mui/icons-material/VolumeUp";
+import VolumeOffIcon from "@mui/icons-material/VolumeOff";
 
 import StockShell from '../../components/stock/layout/StockShell';
 import FilterBar from '../../components/stock/dashboard/FilterBar';
@@ -20,9 +22,12 @@ import { useTickerOptions } from '../../hooks/stock/useTickerOptions';
 import { derivePositionFields, pickDefaultBroker } from '../../utils/stock/DashboardUtil';
 import type { BrokerItem } from '../../components/stock/shared/BrokerSelect';
 import { compareBySort, isFavorable } from '../../utils/stock/tickerSorting';
+import { enableSound, playChime } from '../../utils/stock/chimes';
 
 const toIso = (v: string | Date | null | undefined) =>
   !v ? null : (typeof v === 'string' ? new Date(v).toISOString() : v.toISOString());
+
+type ChimeKey = "green" | "cyan" | "orange" | "red";
 
 export default function Dashboard() {
   const { showSnackbar } = useSnackbar();
@@ -32,6 +37,7 @@ export default function Dashboard() {
   const [zoomTickerId, setZoomTickerId] = useState<string | null>(null);
   const [zoomAnchorEl, setZoomAnchorEl] = useState<HTMLElement | null>(null);
   const [silencedById, setSilencedById] = useState<Record<string, boolean>>({});
+  const [soundEnabled, setSoundEnabled] = useState(false);
 
   // snapshot state
   const [tickerMap, setTickerMap] = useState<Map<string, TickerLatestDTO>>(new Map());
@@ -42,8 +48,15 @@ export default function Dashboard() {
   const [tradeTickerId, setTradeTickerId] = useState<string | null>(null);
   const [tradeSide, setTradeSide] = useState<'buy' | 'sell'>('buy');
 
+  // last seen lastPrice per symbol
+  const lastPriceRef = useRef<Record<string, number>>({});
 
-  // TODO: get the sort working on dashboard
+  // prevents initial-load ding
+  const initializedRef = useRef<Record<string, boolean>>({});
+
+  // per symbol “armed state” (true means we’ve already rung for current side)
+  const chimeStateRef = useRef<Record<string, Partial<Record<ChimeKey, boolean>>>>({});
+
   // TODO: add a page to record dividends.
   // TODO: create dividend tiles and notifications through emails
   // TODO: complete favorability bar
@@ -128,8 +141,6 @@ export default function Dashboard() {
           const existing = prev.get(u.symbol);
           if (!existing) return prev; // ignore tickers not in current snapshot
 
-          const next = new Map(prev);
-
           const updated: TickerLatestDTO = {
             ...existing,
             lastPrice: u.last ?? existing.lastPrice,
@@ -146,8 +157,75 @@ export default function Dashboard() {
           updated.uiSelectedBroker = selected;
           Object.assign(updated, derivePositionFields(updated, selected));
 
-          next.set(u.symbol, updated);
+          // --- Chime logic (re-armable crossings) ---
+          // Only run if we have a numeric new price this tick.
+          const nextPrice = typeof updated.lastPrice === "number" ? updated.lastPrice : null;
+          if (nextPrice != null) {
+            const sym = updated.symbol;
+            const prevPrice = lastPriceRef.current[sym];
 
+            // skip first observation (no initial chimes)
+            const isInitialized = initializedRef.current[sym] === true;
+
+            if (soundEnabled && isInitialized && typeof prevPrice === "number") {
+              const green = typeof updated.thresholdGreen === "number" ? updated.thresholdGreen : null;
+              const cyan = typeof updated.thresholdCyan === "number" ? updated.thresholdCyan : null;
+              const orange = typeof updated.thresholdOrange === "number" ? updated.thresholdOrange : null;
+              const red = typeof updated.thresholdRed === "number" ? updated.thresholdRed : null;
+
+              const st = (chimeStateRef.current[sym] ??= {});
+
+              // ----- SELL thresholds: ring only on upward cross -----
+              const crossedUpGreen =
+                green != null && prevPrice < green && nextPrice >= green && !st.green;
+
+              const crossedUpCyan =
+                cyan != null && prevPrice < cyan && nextPrice >= cyan && !st.cyan;
+
+              // precedence: green first, then cyan
+              if (crossedUpGreen) {
+                playChime("green");
+                st.green = true;
+                st.cyan = true; // above green implies above cyan (avoid later cyan ding)
+              } else if (crossedUpCyan) {
+                playChime("cyan");
+                st.cyan = true;
+              }
+
+              // re-arm when price drops back below threshold
+              if (green != null && nextPrice < green) st.green = false;
+              if (cyan != null && nextPrice < cyan) st.cyan = false;
+
+              // ----- BUY thresholds: ring only on downward cross -----
+              const crossedDownRed =
+                red != null && prevPrice > red && nextPrice <= red && !st.red;
+
+              const crossedDownOrange =
+                orange != null && prevPrice > orange && nextPrice <= orange && !st.orange;
+
+              // precedence: red first, then orange
+              if (crossedDownRed) {
+                playChime("red");
+                st.red = true;
+                st.orange = true; // below red implies below orange (avoid later orange ding)
+              } else if (crossedDownOrange) {
+                playChime("orange");
+                st.orange = true;
+              }
+
+              // re-arm when price recovers back above threshold
+              if (red != null && nextPrice > red) st.red = false;
+              if (orange != null && nextPrice > orange) st.orange = false;
+            }
+
+            // update trackers
+            initializedRef.current[sym] = true;
+            lastPriceRef.current[sym] = nextPrice;
+          }
+
+          // --- commit to map ---
+          const next = new Map(prev);
+          next.set(u.symbol, updated);
           return next;
         });
       },
@@ -215,6 +293,23 @@ export default function Dashboard() {
   useEffect(() => {
     localStorage.setItem("silencedById", JSON.stringify(silencedById));
   }, [silencedById]);
+
+  const toggleSound = async () => {
+    if (soundEnabled) {
+      setSoundEnabled(false);
+      return;
+    }
+
+    // turning ON: must unlock audio context (requires a user gesture)
+    try {
+      await enableSound();
+      setSoundEnabled(true);
+      // optional confirmation chirp
+      playChime("cyan");
+    } catch (e) {
+      console.error("Failed to enable sound", e);
+    }
+  };
 
   const favorableTickers = useMemo(() => {
     const fav = tickers
@@ -339,9 +434,22 @@ export default function Dashboard() {
         <Typography variant="h5" sx={{ fontWeight: 500 }}>
           Dashboard
         </Typography>
-        <Typography variant="body2" sx={{ opacity: 0.8 }}>
-          WS: {wsConnected ? 'connected' : 'disconnected'}
-        </Typography>
+        <Box sx={{ display: "inline-flex", alignItems: "center", gap: 0.75 }}>
+          <Tooltip title={soundEnabled ? "Sound: ON (click to mute)" : "Sound: OFF (click to enable)"}>
+            <IconButton
+              size="small"
+              onClick={toggleSound}
+              aria-label={soundEnabled ? "Disable sound" : "Enable sound"}
+              sx={{ p: 0.25 }}
+            >
+              {soundEnabled ? <VolumeUpIcon fontSize="small" /> : <VolumeOffIcon fontSize="small" />}
+            </IconButton>
+          </Tooltip>
+
+          <Typography variant="body2" sx={{ opacity: 0.8 }}>
+            WS: {wsConnected ? "connected" : "disconnected"}
+          </Typography>
+        </Box>
       </Box>
 
       <Box>
