@@ -1,6 +1,6 @@
 import { Box } from '@mui/material';
 import { ChartTileUPlot } from './ChartTileUPlot';
-import type { PerTab } from '../../../types/stock/chart.type';
+import type { PerTab } from '../../../types/stock/chart.types';
 
 export function ChartGrid(props: {
   symbols: string[];

@@ -1,9 +1,12 @@
-import type { ChartWallQueryState } from '../../types/stock/chart.type';
+import type { ChartWallQueryState } from '../../types/stock/chart.types';
 import type { Bucket, Market, StockClass } from '../../types/stock/ticker.types';
 
 function parseCsv(v: string | null) {
   if (!v) return [];
-  return v.split(',').map(s => s.trim()).filter(Boolean);
+  return v
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
 }
 
 function asPerTab(n: number): 1 | 2 | 4 | 6 | 9 | null {
@@ -29,8 +32,8 @@ export function readChartWallQuery(defaults: ChartWallQueryState): ChartWallQuer
       : defaults.stockClass;
 
   const bucketsRaw = parseCsv(sp.get('buckets'));
-  const buckets = bucketsRaw.filter((b): b is Bucket =>
-    b === 'core' || b === 'watch' || b === 'once' || b === 'avoid'
+  const buckets = bucketsRaw.filter(
+    (b): b is Bucket => b === 'core' || b === 'watch' || b === 'once' || b === 'avoid',
   );
   const bucketsFinal = buckets.length ? buckets : defaults.buckets;
 
@@ -67,4 +70,3 @@ export function buildChartWallQueryString(state: ChartWallQueryState) {
   sp.set('tab', String(state.tab));
   return sp.toString();
 }
-

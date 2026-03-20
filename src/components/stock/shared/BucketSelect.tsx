@@ -10,7 +10,7 @@ const DEFAULT_ITEMS: { value: Bucket; label: string }[] = [
 ];
 
 export function BucketSelect(props: {
-  value: Bucket;
+  value: string;
   onChange: (v: Bucket) => void;
   items: { value: Bucket; label: string }[];
   label?: string;

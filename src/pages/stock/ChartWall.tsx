@@ -14,7 +14,7 @@ import { ChartWallTabs } from '../../components/stock/chartwall/ChartWallTabs';
 import { ChartGrid } from '../../components/stock/chartwall/ChartGrid';
 
 import { buildChartWallQueryString, readChartWallQuery } from '../../utils/stock/chartwallUrl';
-import type { Latest, PerTab, RotateSec } from '../../types/stock/chart.type';
+import type { Latest, PerTab, RotateSec } from '../../types/stock/chart.types';
 import { isDefined } from '../../utils/stock/filter';
 import { marketTz, nextMarketOpenDate } from '../../utils/stock/ChartTileUPlot';
 

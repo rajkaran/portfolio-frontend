@@ -1,4 +1,4 @@
-export type Market = 'canada' | 'usa' | 'india';
+export type Market = string; // IDs for exchanges stored in db
 export type StockClass = 'dividend' | 'trade' | 'longTerm';
 export type Bucket = 'core' | 'watch' | 'once' | 'avoid';
 export type BrokerId = 'wealthsimple' | 'questrade' | 'td';
@@ -97,4 +97,18 @@ export const defaultStockFilters: StockFilters = {
   stockClass: 'trade',
   sortBy: 'bucket',
   symbols: [],
+};
+
+export type FilterState = {
+  market: Market;
+  stockClass: StockClass;
+};
+
+export type FormState = {
+  symbol: string;
+  companyName: string;
+  market: Market;
+  stockClasses: StockClass[];
+  industry: string;
+  bucket: Bucket;
 };

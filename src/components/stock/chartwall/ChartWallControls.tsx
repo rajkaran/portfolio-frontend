@@ -1,7 +1,7 @@
 import { Box, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
 import type { Market, StockClass, Bucket, TickerOption } from '../../../types/stock/ticker.types';
 import { TickerAutosuggest } from '../shared/TickerAutosuggest';
-import type { PerTab, RotateSec } from '../../../types/stock/chart.type';
+import type { PerTab, RotateSec } from '../../../types/stock/chart.types';
 import { SegmentedToggleButton } from '../../common/SegmentedToggleButton';
 import { MarketSelect } from '../shared/MarketSelect';
 import { StockClassSelect } from '../shared/StockClassSelect';

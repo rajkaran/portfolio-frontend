@@ -16,7 +16,7 @@ function normalizeMulti(value: unknown): StockClass[] {
 }
 
 export function StockClassMultiSelect(props: {
-  value: StockClass[];
+  value: string[];
   onChange: (v: StockClass[]) => void;
   items: { value: StockClass; label: string }[];
   label?: string;
@@ -26,7 +26,7 @@ export function StockClassMultiSelect(props: {
 }) {
   const { value, onChange, items, label = 'Classes', size = 'small', disabled, sx } = props;
 
-  const list = (items && items.length ? items : DEFAULT_ITEMS);
+  const list = items && items.length ? items : DEFAULT_ITEMS;
 
   // label lookup map
   const labelBy = new Map(list.map((x) => [x.value, x.label]));
@@ -40,9 +40,7 @@ export function StockClassMultiSelect(props: {
         value={value}
         onChange={(e) => onChange(normalizeMulti(e.target.value))}
         renderValue={(selected) =>
-          (selected as StockClass[])
-            .map((c) => labelBy.get(c) ?? c)
-            .join(', ')
+          (selected as StockClass[]).map((c) => labelBy.get(c) ?? c).join(', ')
         }
       >
         {list.map((c) => (

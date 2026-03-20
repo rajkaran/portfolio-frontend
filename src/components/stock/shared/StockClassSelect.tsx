@@ -3,7 +3,7 @@ import type { SxProps, Theme } from '@mui/material/styles';
 import type { StockClass } from '../../../types/stock/ticker.types';
 
 export function StockClassSelect(props: {
-  value: StockClass;
+  value: string;
   onChange: (v: StockClass) => void;
   items: { value: StockClass; label: string }[];
   label?: string;
@@ -18,7 +18,9 @@ export function StockClassSelect(props: {
       <InputLabel>{label}</InputLabel>
       <Select label={label} value={value} onChange={(e) => onChange(e.target.value as StockClass)}>
         {props.items.map((m) => (
-          <MenuItem key={m.value} value={m.value}>{m.label}</MenuItem>
+          <MenuItem key={m.value} value={m.value}>
+            {m.label}
+          </MenuItem>
         ))}
       </Select>
     </FormControl>
