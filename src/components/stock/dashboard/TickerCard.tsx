@@ -1,4 +1,14 @@
-import { Box, Card, CardContent, Chip, IconButton, MenuItem, Select, Stack, Typography } from '@mui/material';
+import {
+  Box,
+  Card,
+  CardContent,
+  Chip,
+  IconButton,
+  MenuItem,
+  Select,
+  Stack,
+  Typography,
+} from '@mui/material';
 import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import SellIcon from '@mui/icons-material/Sell';
@@ -32,15 +42,16 @@ function getBorderStatus(ticker: TickerLatestDTO): {
   const blinkAllowed = typeof ticker.avgBookCost === 'number' && ticker.avgBookCost > 0;
 
   // Priority: strongest condition wins
-  if (p >= ticker.thresholdGreen) return { color: THRESHOLD_COLORS.thresholdGreen, blink: blinkAllowed };
-  if (p >= ticker.thresholdCyan) return { color: THRESHOLD_COLORS.thresholdCyan, blink: blinkAllowed };
+  if (p >= ticker.thresholdGreen)
+    return { color: THRESHOLD_COLORS.thresholdGreen, blink: blinkAllowed };
+  if (p >= ticker.thresholdCyan)
+    return { color: THRESHOLD_COLORS.thresholdCyan, blink: blinkAllowed };
   if (p <= ticker.thresholdRed) return { color: THRESHOLD_COLORS.thresholdRed };
   if (p <= ticker.thresholdOrange) return { color: THRESHOLD_COLORS.thresholdOrange };
 
   // No alert
   return {};
 }
-
 
 export default function TickerCard(props: {
   ticker: TickerLatestDTO;
@@ -53,18 +64,32 @@ export default function TickerCard(props: {
   onToggleSilence: (tickerId: string) => void;
   showZoom?: boolean;
 }) {
-  const { ticker, brokerLabels, onZoom, onTrade, onChangeThreshold, onSelectBroker, silenced, onToggleSilence, showZoom = true } = props;
+  const {
+    ticker,
+    brokerLabels,
+    onZoom,
+    onTrade,
+    onChangeThreshold,
+    onSelectBroker,
+    silenced,
+    onToggleSilence,
+    showZoom = true,
+  } = props;
 
   const cardRef = useRef<HTMLDivElement | null>(null);
   const border = getBorderStatus(ticker);
 
   const FALLBACK_BROKER: BrokerId = 'wealthsimple';
 
-  const eligibleBrokers = (Object.keys(ticker.positionsByBroker ?? {}) as BrokerId[]).filter((b) => brokerQty(ticker, b) > 0);
+  const eligibleBrokers = (Object.keys(ticker.positionsByBroker ?? {}) as BrokerId[]).filter(
+    (b) => brokerQty(ticker, b) > 0,
+  );
   const showDropdown = eligibleBrokers.length >= 2;
 
   const displayBroker: BrokerId =
-    (ticker.uiSelectedBroker && eligibleBrokers.includes(ticker.uiSelectedBroker) ? ticker.uiSelectedBroker : undefined) ??
+    (ticker.uiSelectedBroker && eligibleBrokers.includes(ticker.uiSelectedBroker)
+      ? ticker.uiSelectedBroker
+      : undefined) ??
     eligibleBrokers[0] ??
     FALLBACK_BROKER;
 
@@ -73,6 +98,7 @@ export default function TickerCard(props: {
 
   const CAPTION_FONT = '0.65rem';
 
+  // If you have multiple brokers with positions, show a dropdown to select which one to display
   const leftPositionNode = showDropdown ? (
     <Box sx={{ display: 'inline-flex', alignItems: 'center' }}>
       <Select
@@ -160,7 +186,9 @@ export default function TickerCard(props: {
   ) : (
     <Typography variant="caption" sx={{ opacity: 0.8, fontSize: CAPTION_FONT, lineHeight: 1 }}>
       {typeof ticker.avgBookCost === 'number' ? `Avg ${ticker.avgBookCost.toFixed(2)}` : null}
-      {typeof ticker.quantityHolding === 'number' && ticker.quantityHolding > 0 ? ` (${ticker.quantityHolding})` : null}
+      {typeof ticker.quantityHolding === 'number' && ticker.quantityHolding > 0
+        ? ` (${ticker.quantityHolding})`
+        : null}
     </Typography>
   );
 
@@ -176,21 +204,21 @@ export default function TickerCard(props: {
 
         ...(border.blink
           ? {
-            '@keyframes borderPulse': {
-              '0%': { boxShadow: `0 0 0 0 ${border.color}00` },
-              '50%': { boxShadow: `0 0 0 3px ${border.color}55` },
-              '100%': { boxShadow: `0 0 0 0 ${border.color}00` },
-            },
-            animation: 'borderPulse 1.1s ease-in-out infinite',
-          }
+              '@keyframes borderPulse': {
+                '0%': { boxShadow: `0 0 0 0 ${border.color}00` },
+                '50%': { boxShadow: `0 0 0 3px ${border.color}55` },
+                '100%': { boxShadow: `0 0 0 0 ${border.color}00` },
+              },
+              animation: 'borderPulse 1.1s ease-in-out infinite',
+            }
           : null),
       }}
     >
       <CardContent
         sx={{
-          p: 0,            // 8px on all sides
+          p: 0, // 8px on all sides
           '&:last-child': {
-            pb: 0.3,         // override MUI's extra bottom padding
+            pb: 0.3, // override MUI's extra bottom padding
           },
         }}
       >
@@ -245,7 +273,7 @@ export default function TickerCard(props: {
         </Stack>
 
         {/* Placeholder for your threshold-line visual */}
-        <Box sx={{ mt: .5 }}>
+        <Box sx={{ mt: 0.5 }}>
           <ThresholdMini
             currentPrice={ticker.lastPrice ?? 0}
             thresholds={[
@@ -269,9 +297,7 @@ export default function TickerCard(props: {
           }}
         >
           {/* Left: Avg book cost */}
-          <Box sx={{ justifySelf: 'start' }}>
-            {leftPositionNode}
-          </Box>
+          <Box sx={{ justifySelf: 'start' }}>{leftPositionNode}</Box>
 
           {/* Center: Profit */}
           <Box sx={{ justifySelf: 'center' }}>
@@ -298,10 +324,9 @@ export default function TickerCard(props: {
           {/* Right: TimeAgo */}
           <Box sx={{ justifySelf: 'end' }}>
             {/* do the subtraction to get seconds */}
-            <TimeAgo updatedAtIso={(ticker.tradeDatetime) ?? ''} />
+            <TimeAgo updatedAtIso={ticker.tradeDatetime ?? ''} />
           </Box>
         </Box>
-
       </CardContent>
     </Card>
   );

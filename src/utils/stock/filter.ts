@@ -26,3 +26,8 @@ export function getDefaultMarketValue(items: { value: string; label: string }[])
   const canada = items.find((item) => item.value === 'canada');
   return canada?.value ?? items[0]?.value ?? '';
 }
+
+export function getDefaultStockClassValue(items: { value: string; label: string }[]): string | '' {
+  const trade = items.find((item) => item.value === 'trade');
+  return trade?.value ?? items[0]?.value ?? '';
+}

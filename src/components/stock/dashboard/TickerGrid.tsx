@@ -14,7 +14,7 @@ export default function TickerGrid({
   onToggleSilence,
 }: {
   tickers: TickerLatestDTO[];
-  brokerLabels: Record<BrokerId, string>;
+  brokerLabels: Record<string, string>;
   onZoom: (id: string, anchorEl: HTMLElement | null) => void;
   onTrade: (id: string, side: 'buy' | 'sell') => void;
   onChangeThreshold: (tickerId: string, key: ThresholdKey, value: number) => void;
@@ -22,6 +22,7 @@ export default function TickerGrid({
   silencedById: Record<string, boolean>;
   onToggleSilence: (tickerId: string) => void;
 }) {
+  console.log('Rendering TickerGrid with broker labels:', brokerLabels);
   return (
     <Box sx={{ mt: 2 }}>
       <Box

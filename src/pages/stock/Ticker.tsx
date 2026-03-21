@@ -22,8 +22,6 @@ import AddIcon from '@mui/icons-material/Add';
 import { useEffect, useMemo, useState } from 'react';
 import { searchSymbols } from '../../services/stock/ticker-api';
 import type {
-  Market,
-  StockClass,
   Bucket,
   TickerDTO,
   SymbolSuggestDTO,
@@ -45,7 +43,7 @@ import { MarketSelect } from '../../components/stock/shared/MarketSelect';
 import { StockClassSelect } from '../../components/stock/shared/StockClassSelect';
 import { StockClassMultiSelect } from '../../components/stock/shared/StockClassMultiSelect';
 import { BucketSelect } from '../../components/stock/shared/BucketSelect';
-import { getDefaultMarketValue } from '../../utils/stock/filter';
+import { getDefaultMarketValue, getDefaultStockClassValue } from '../../utils/stock/filter';
 
 const DEFAULT_FORM: FormState = {
   symbol: '',
@@ -60,12 +58,11 @@ export default function Ticker() {
   const { showSnackbar } = useSnackbar();
 
   const keyValueIds = useMemo(() => ['stockClass', 'bucket'], []);
-
   const { data: keyValuePairs, loading: pairsLoading } = useKeyValuePairs(keyValueIds);
   const { data: exchanges, loading: exchangesLoading } = useStockExchanges(true);
 
   // Page state
-  const [filters, setFilters] = useState<FilterState>({ market: '', stockClass: 'trade' });
+  const [filters, setFilters] = useState<FilterState>({ market: '', stockClass: '' });
   const [rows, setRows] = useState<TickerDTO[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -101,7 +98,7 @@ export default function Ticker() {
     () =>
       keyValuePairs?.stockClass
         ? Object.entries(keyValuePairs.stockClass).map(([value, label]) => ({
-            value: value as StockClass,
+            value: value,
             label,
           }))
         : [],
@@ -123,14 +120,15 @@ export default function Ticker() {
     if (!filters.market && marketItems.length > 0) {
       setFilters((prev) => ({
         ...prev,
-        market: getDefaultMarketValue(marketItems),
+        market: prev.market || getDefaultMarketValue(marketItems),
+        stockClass: prev.stockClass || getDefaultStockClassValue(classItems),
       }));
     }
   }, [marketItems, filters.market]);
 
-  const marketLabel = (m: Market) => marketItems.find((item) => item.value === m)?.label ?? m;
-  const classLabel = (c: StockClass) => keyValuePairs?.stockClass?.[c] ?? c;
-  const bucketLabel = (b: Bucket) => keyValuePairs?.bucket?.[b] ?? b;
+  const marketLabel = (m: string) => marketItems.find((item) => item.value === m)?.label ?? m;
+  const classLabel = (c: string) => keyValuePairs?.stockClass?.[c] ?? c;
+  const bucketLabel = (b: string) => keyValuePairs?.bucket?.[b] ?? b;
 
   useEffect(() => {
     if (!open) return; // your dialog open boolean

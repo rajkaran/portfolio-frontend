@@ -1,13 +1,18 @@
 import { Box, IconButton, Tooltip, Typography } from '@mui/material';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import VolumeUpIcon from "@mui/icons-material/VolumeUp";
-import VolumeOffIcon from "@mui/icons-material/VolumeOff";
+import VolumeUpIcon from '@mui/icons-material/VolumeUp';
+import VolumeOffIcon from '@mui/icons-material/VolumeOff';
 
 import StockShell from '../../components/stock/layout/StockShell';
 import FilterBar from '../../components/stock/dashboard/FilterBar';
 import RightFavorableBar from '../../components/stock/dashboard/RightFavorableBar';
 import TickerGrid from '../../components/stock/dashboard/TickerGrid';
-import { defaultStockFilters, type BrokerId, type StockFilters, type TickerLatestDTO, type TickerOption } from '../../types/stock/ticker.types';
+import {
+  defaultStockFilters,
+  type StockFilters,
+  type TickerLatestDTO,
+  type TickerOption,
+} from '../../types/stock/ticker.types';
 import { applyFilters } from '../../utils/stock/filter';
 import TickerCardTooltip from '../../components/stock/dashboard/TickerDetailTooltip';
 import { listTickerLatest } from '../../services/stock/ticker-api';
@@ -18,20 +23,31 @@ import { useSnackbar } from '../../components/common/SnackbarProvider';
 import type { ThresholdKey } from '../../constants/stockUI';
 import { CreateTradeDialog } from '../../components/stock/shared/CreateTradeDialog';
 import type { TradeType, TradeWsMsg } from '../../types/stock/trade.types';
-import { useTickerOptions } from '../../hooks/stock/useTickerOptions';
 import { derivePositionFields, pickDefaultBroker } from '../../utils/stock/DashboardUtil';
-import type { BrokerItem } from '../../components/stock/shared/BrokerSelect';
 import { compareBySort, isFavorable } from '../../utils/stock/tickerSorting';
 import { enableSound, playChime } from '../../utils/stock/chimes';
+import { useKeyValuePairs } from '../../hooks/stock/useKeyValuePairs';
+import { getDefaultStockClassValue, getDefaultMarketValue } from '../../utils/stock/filter';
+import { useStockExchanges } from '../../hooks/stock/useStockExchanges';
+import { useBrokerAccounts } from '../../hooks/stock/useBrokerAccounts';
 
 const toIso = (v: string | Date | null | undefined) =>
-  !v ? null : (typeof v === 'string' ? new Date(v).toISOString() : v.toISOString());
+  !v ? null : typeof v === 'string' ? new Date(v).toISOString() : v.toISOString();
 
-type ChimeKey = "green" | "cyan" | "orange" | "red";
+type ChimeKey = 'green' | 'cyan' | 'orange' | 'red';
+
+type BrokerItem = {
+  value: string;
+  label: string;
+};
 
 export default function Dashboard() {
   const { showSnackbar } = useSnackbar();
-  const { options } = useTickerOptions(true);
+
+  const keyValueIds = useMemo(() => ['stockClass'], []);
+  const { data: keyValuePairs } = useKeyValuePairs(keyValueIds);
+  const { data: exchanges } = useStockExchanges(true);
+  const { data: brokerAccounts } = useBrokerAccounts(true);
 
   const [filters, setFilters] = useState(defaultStockFilters);
   const [zoomTickerId, setZoomTickerId] = useState<string | null>(null);
@@ -75,28 +91,72 @@ export default function Dashboard() {
         companyName: t.companyName,
         bucket: t.bucket,
       })),
-    [tickers]
+    [tickers],
   );
 
   // known brokers
   const brokerItems: BrokerItem[] = useMemo(() => {
-    if (!options?.broker) return [];
-    return Object.entries(options.broker).map(([value, label]) => ({
-      value: value as BrokerId,
-      label: String(label),
+    return brokerAccounts.map((acc) => ({
+      value: acc.id,
+      label: `${acc.broker} - ${acc.name}`,
     }));
-  }, [options]);
+  }, [brokerAccounts]);
 
   const brokerLabels = useMemo(() => {
-    const m = {} as Record<BrokerId, string>;
-    for (const [value, label] of Object.entries(options?.broker ?? {})) {
-      m[value as BrokerId] = String(label);
+    const map: Record<string, string> = {};
+
+    for (const acc of brokerAccounts) {
+      map[acc.id] = `${acc.broker} - ${acc.name}`;
     }
-    return m;
-  }, [options]);
+
+    return map;
+  }, [brokerAccounts]);
+
+  const marketItems = useMemo(() => {
+    const seen = new Set<string>();
+    const result: { value: string; label: string }[] = [];
+
+    for (const exchange of exchanges) {
+      const value = exchange.country.trim().toLowerCase();
+      if (seen.has(value)) continue;
+      seen.add(value);
+      result.push({ value, label: exchange.country });
+    }
+
+    result.sort((a, b) => a.label.localeCompare(b.label));
+    return result;
+  }, [exchanges]);
+
+  const classItems = useMemo(
+    () =>
+      keyValuePairs?.stockClass
+        ? Object.entries(keyValuePairs.stockClass).map(([value, label]) => ({
+            value,
+            label,
+          }))
+        : [],
+    [keyValuePairs?.stockClass],
+  );
+
+  // set default filters with fetched market and stockclass
+  useEffect(() => {
+    if (
+      (!filters.market || !filters.stockClass) &&
+      marketItems.length > 0 &&
+      classItems.length > 0
+    ) {
+      setFilters((prev) => ({
+        ...prev,
+        market: prev.market || getDefaultMarketValue(marketItems),
+        stockClass: prev.stockClass || getDefaultStockClassValue(classItems),
+      }));
+    }
+  }, [filters.market, filters.stockClass, marketItems, classItems]);
 
   // ---- initial fetch
   useEffect(() => {
+    if (!filters.market || !filters.stockClass) return;
+
     let cancelled = false;
 
     (async () => {
@@ -159,7 +219,7 @@ export default function Dashboard() {
 
           // --- Chime logic (re-armable crossings) ---
           // Only run if we have a numeric new price this tick.
-          const nextPrice = typeof updated.lastPrice === "number" ? updated.lastPrice : null;
+          const nextPrice = typeof updated.lastPrice === 'number' ? updated.lastPrice : null;
           if (nextPrice != null) {
             const sym = updated.symbol;
             const prevPrice = lastPriceRef.current[sym];
@@ -167,11 +227,13 @@ export default function Dashboard() {
             // skip first observation (no initial chimes)
             const isInitialized = initializedRef.current[sym] === true;
 
-            if (soundEnabled && isInitialized && typeof prevPrice === "number") {
-              const green = typeof updated.thresholdGreen === "number" ? updated.thresholdGreen : null;
-              const cyan = typeof updated.thresholdCyan === "number" ? updated.thresholdCyan : null;
-              const orange = typeof updated.thresholdOrange === "number" ? updated.thresholdOrange : null;
-              const red = typeof updated.thresholdRed === "number" ? updated.thresholdRed : null;
+            if (soundEnabled && isInitialized && typeof prevPrice === 'number') {
+              const green =
+                typeof updated.thresholdGreen === 'number' ? updated.thresholdGreen : null;
+              const cyan = typeof updated.thresholdCyan === 'number' ? updated.thresholdCyan : null;
+              const orange =
+                typeof updated.thresholdOrange === 'number' ? updated.thresholdOrange : null;
+              const red = typeof updated.thresholdRed === 'number' ? updated.thresholdRed : null;
 
               const st = (chimeStateRef.current[sym] ??= {});
 
@@ -184,11 +246,11 @@ export default function Dashboard() {
 
               // precedence: green first, then cyan
               if (crossedUpGreen) {
-                playChime("green");
+                playChime('green');
                 st.green = true;
                 st.cyan = true; // above green implies above cyan (avoid later cyan ding)
               } else if (crossedUpCyan) {
-                playChime("cyan");
+                playChime('cyan');
                 st.cyan = true;
               }
 
@@ -197,19 +259,18 @@ export default function Dashboard() {
               if (cyan != null && nextPrice < cyan) st.cyan = false;
 
               // ----- BUY thresholds: ring only on downward cross -----
-              const crossedDownRed =
-                red != null && prevPrice > red && nextPrice <= red && !st.red;
+              const crossedDownRed = red != null && prevPrice > red && nextPrice <= red && !st.red;
 
               const crossedDownOrange =
                 orange != null && prevPrice > orange && nextPrice <= orange && !st.orange;
 
               // precedence: red first, then orange
               if (crossedDownRed) {
-                playChime("red");
+                playChime('red');
                 st.red = true;
                 st.orange = true; // below red implies below orange (avoid later orange ding)
               } else if (crossedDownOrange) {
-                playChime("orange");
+                playChime('orange');
                 st.orange = true;
               }
 
@@ -237,15 +298,19 @@ export default function Dashboard() {
 
           const next = new Map(prev);
 
-          const broker = m.patch.broker; // BrokerId
+          const broker = m.patch.broker;
           const prevPos = existing.positionsByBroker ?? {};
           const prevSnap = prevPos[broker] ?? {};
 
           // apply patch
           const nextSnap = {
             ...prevSnap,
-            ...(m.patch.avgBookCost !== undefined ? { avgBookCost: m.patch.avgBookCost ?? null } : {}),
-            ...(m.patch.quantityHolding !== undefined ? { quantityHolding: m.patch.quantityHolding ?? null } : {}),
+            ...(m.patch.avgBookCost !== undefined
+              ? { avgBookCost: m.patch.avgBookCost ?? null }
+              : {}),
+            ...(m.patch.quantityHolding !== undefined
+              ? { quantityHolding: m.patch.quantityHolding ?? null }
+              : {}),
           };
 
           const updated: TickerLatestDTO = {
@@ -275,9 +340,7 @@ export default function Dashboard() {
 
   const visibleTickers = useMemo(() => {
     const filtered = applyFilters(tickers, filters);
-    return [...filtered].sort((a, b) =>
-      compareBySort(a, b, filters.sortBy, { silencedById })
-    );
+    return [...filtered].sort((a, b) => compareBySort(a, b, filters.sortBy, { silencedById }));
   }, [tickers, filters, silencedById]);
 
   const toggleSilenced = useCallback((tickerId: string) => {
@@ -286,12 +349,12 @@ export default function Dashboard() {
 
   // Persist silences across refresh
   useEffect(() => {
-    const raw = localStorage.getItem("silencedById");
+    const raw = localStorage.getItem('silencedById');
     if (raw) setSilencedById(JSON.parse(raw));
   }, []);
 
   useEffect(() => {
-    localStorage.setItem("silencedById", JSON.stringify(silencedById));
+    localStorage.setItem('silencedById', JSON.stringify(silencedById));
   }, [silencedById]);
 
   const toggleSound = async () => {
@@ -305,16 +368,16 @@ export default function Dashboard() {
       await enableSound();
       setSoundEnabled(true);
       // optional confirmation chirp
-      playChime("cyan");
+      playChime('cyan');
     } catch (e) {
-      console.error("Failed to enable sound", e);
+      console.error('Failed to enable sound', e);
     }
   };
 
   const favorableTickers = useMemo(() => {
     const fav = tickers
-      .filter(t => isFavorable(t, { silencedBuy: !!silencedById[t.id] }))
-      .sort((a, b) => compareBySort(a, b, "favorability", { silencedById }));
+      .filter((t) => isFavorable(t, { silencedBuy: !!silencedById[t.id] }))
+      .sort((a, b) => compareBySort(a, b, 'favorability', { silencedById }));
 
     // Cap the Favorable bar list (so it doesn’t become an infinite scroll on wild days):
     return fav.slice(0, 20);
@@ -333,7 +396,7 @@ export default function Dashboard() {
   const zoomTicker = useMemo(() => {
     if (!zoomTickerId) return null;
     return visibleTickers.find((t) => t.id === zoomTickerId) ?? null;
-  }, [zoomTickerId, visibleTickers])
+  }, [zoomTickerId, visibleTickers]);
 
   const onZoom = (id: string, anchorEl: HTMLElement | null) => {
     setZoomTickerId(id);
@@ -345,7 +408,7 @@ export default function Dashboard() {
     setZoomAnchorEl(null);
   };
 
-  const onSelectBroker = useCallback((tickerSymbol: string, broker: BrokerId) => {
+  const onSelectBroker = useCallback((tickerSymbol: string, broker: string) => {
     setTickerMap((prev) => {
       const existing = prev.get(tickerSymbol);
       if (!existing) return prev;
@@ -418,6 +481,7 @@ export default function Dashboard() {
   return (
     <StockShell
       right={({ closeRight }) => (
+        // TODO: after fixing the position by broker, adjust the selected broker in TickerCard.
         <RightFavorableBar
           onClose={closeRight}
           tickers={favorableTickers}
@@ -434,28 +498,32 @@ export default function Dashboard() {
         <Typography variant="h5" sx={{ fontWeight: 500 }}>
           Dashboard
         </Typography>
-        <Box sx={{ display: "inline-flex", alignItems: "center", gap: 0.75 }}>
-          <Tooltip title={soundEnabled ? "Sound: ON (click to mute)" : "Sound: OFF (click to enable)"}>
+        <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75 }}>
+          <Tooltip
+            title={soundEnabled ? 'Sound: ON (click to mute)' : 'Sound: OFF (click to enable)'}
+          >
             <IconButton
               size="small"
               onClick={toggleSound}
-              aria-label={soundEnabled ? "Disable sound" : "Enable sound"}
+              aria-label={soundEnabled ? 'Disable sound' : 'Enable sound'}
               sx={{ p: 0.25 }}
             >
-              {soundEnabled ? <VolumeUpIcon fontSize="small" /> : <VolumeOffIcon fontSize="small" />}
+              {soundEnabled ? (
+                <VolumeUpIcon fontSize="small" />
+              ) : (
+                <VolumeOffIcon fontSize="small" />
+              )}
             </IconButton>
           </Tooltip>
 
           <Typography variant="body2" sx={{ opacity: 0.8 }}>
-            WS: {wsConnected ? "connected" : "disconnected"}
+            WS: {wsConnected ? 'connected' : 'disconnected'}
           </Typography>
         </Box>
       </Box>
-
       <Box>
         <FilterBar value={filters} onChange={onFiltersChange} tickers={tickers} />
       </Box>
-
       <TickerGrid
         tickers={visibleTickers}
         brokerLabels={brokerLabels}
@@ -466,10 +534,14 @@ export default function Dashboard() {
         silencedById={silencedById}
         onToggleSilence={toggleSilenced}
       />
-
-      <TickerCardTooltip open={Boolean(zoomTickerId)} anchorEl={zoomAnchorEl} ticker={zoomTicker} onClose={closeZoom} />
-
+      <TickerCardTooltip
+        open={Boolean(zoomTickerId)}
+        anchorEl={zoomAnchorEl}
+        ticker={zoomTicker}
+        onClose={closeZoom}
+      />
       {/* Quick trade dialog */}
+      {/* TODO: after fixing the position by broker, adjust the selected broker in TickerCard. */}
       <CreateTradeDialog
         open={tradeOpen}
         onClose={closeQuickTrade}
@@ -479,7 +551,6 @@ export default function Dashboard() {
         fixedTickerId={tradeTickerId ?? undefined}
         presetType={tradeSide}
       />
-
     </StockShell>
   );
 }

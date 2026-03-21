@@ -1,7 +1,7 @@
 export type Market = string; // IDs for exchanges stored in db
-export type StockClass = 'dividend' | 'trade' | 'longTerm';
-export type Bucket = 'core' | 'watch' | 'once' | 'avoid';
-export type BrokerId = 'wealthsimple' | 'questrade' | 'td';
+export type StockClass = string;
+export type Bucket = string;
+export type BrokerId = string;
 
 export type ThresholdPatch = Partial<{
   thresholdGreen: number;
@@ -15,7 +15,7 @@ export type TickerOption = {
   id: string;
   symbol: string;
   companyName?: string;
-  bucket?: Bucket;
+  bucket?: string;
 };
 
 export type BrokerPositionSnapshotDTO = {
@@ -31,10 +31,10 @@ export type TickerLatestDTO = {
   id: string;
   symbol: string;
   companyName?: string;
-  market: Market;
-  stockClasses: StockClass[];
+  market: string;
+  stockClasses: string[];
   industry: string;
-  bucket: Bucket;
+  bucket: string;
 
   symbolId?: number | null;
   lastPrice?: number | null;
@@ -49,10 +49,10 @@ export type TickerLatestDTO = {
   thresholdOrange: number;
   thresholdRed: number;
 
-  positionsByBroker?: Partial<Record<BrokerId, BrokerPositionSnapshotDTO>>;
+  positionsByBroker?: Partial<Record<string, BrokerPositionSnapshotDTO>>;
 
   // UI-only (stored in state, not backend)
-  uiSelectedBroker?: BrokerId;
+  uiSelectedBroker?: string;
 
   // keep these derived fields
   avgBookCost?: number | null;
@@ -64,10 +64,10 @@ export type TickerDTO = {
   id: string;
   symbol: string;
   companyName: string;
-  market: Market;
-  stockClasses: StockClass[];
+  market: string;
+  stockClasses: string[];
   industry: string;
-  bucket: Bucket;
+  bucket: string;
 };
 
 export type CreateTickerDTO = Omit<TickerDTO, 'id'>;
@@ -86,29 +86,29 @@ export type SymbolSuggestDTO = {
 export type SortBy = 'az' | 'za' | 'bucket' | 'favorability';
 
 export type StockFilters = {
-  market: Market;
-  stockClass: StockClass;
+  market: string;
+  stockClass: string;
   sortBy: SortBy;
   symbols: string[]; // e.g. ["WFG.TO", "SHOP.TO"]
 };
 
 export const defaultStockFilters: StockFilters = {
-  market: 'canada',
-  stockClass: 'trade',
+  market: '',
+  stockClass: '',
   sortBy: 'bucket',
   symbols: [],
 };
 
 export type FilterState = {
-  market: Market;
-  stockClass: StockClass;
+  market: string;
+  stockClass: string;
 };
 
 export type FormState = {
   symbol: string;
   companyName: string;
-  market: Market;
-  stockClasses: StockClass[];
+  market: string;
+  stockClasses: string[];
   industry: string;
-  bucket: Bucket;
+  bucket: string;
 };
