@@ -22,7 +22,6 @@ import AddIcon from '@mui/icons-material/Add';
 import { useEffect, useMemo, useState } from 'react';
 import { searchSymbols } from '../../services/stock/ticker-api';
 import type {
-  Bucket,
   TickerDTO,
   SymbolSuggestDTO,
   FormState,
@@ -43,15 +42,22 @@ import { MarketSelect } from '../../components/stock/shared/MarketSelect';
 import { StockClassSelect } from '../../components/stock/shared/StockClassSelect';
 import { StockClassMultiSelect } from '../../components/stock/shared/StockClassMultiSelect';
 import { BucketSelect } from '../../components/stock/shared/BucketSelect';
-import { getDefaultMarketValue, getDefaultStockClassValue } from '../../utils/stock/filter';
+import {
+  getBucketItems,
+  getDefaultBucketValues,
+  getDefaultMarketValue,
+  getDefaultStockClassValue,
+  getMarketItemsFromExchanges,
+  getStockClassItems,
+} from '../../utils/stock/prepareDropdownOptions';
 
-const DEFAULT_FORM: FormState = {
+const EMPTY_FORM: FormState = {
   symbol: '',
   companyName: '',
   market: '',
-  stockClasses: ['dividend'],
+  stockClasses: [],
   industry: '',
-  bucket: 'watch',
+  bucket: '',
 };
 
 export default function Ticker() {
@@ -69,7 +75,7 @@ export default function Ticker() {
   // dialog state
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<TickerDTO | null>(null);
-  const [form, setForm] = useState<FormState>(DEFAULT_FORM);
+  const [form, setForm] = useState<FormState>(EMPTY_FORM);
 
   // autosugegst symbol state
   const [symbolInput, setSymbolInput] = useState('');
@@ -77,54 +83,20 @@ export default function Ticker() {
   const [symbolLoading, setSymbolLoading] = useState(false);
   const [selectedSymbol, setSelectedSymbol] = useState<SymbolSuggestDTO | null>(null);
 
-  const marketItems = useMemo(() => {
-    const seen = new Set<string>();
-    const result: { value: string; label: string }[] = [];
-
-    for (const exchange of exchanges) {
-      const value = exchange.country.trim().toLowerCase();
-
-      if (seen.has(value)) continue;
-      seen.add(value);
-
-      result.push({ value, label: exchange.country });
-    }
-
-    result.sort((a, b) => a.label.localeCompare(b.label));
-    return result;
-  }, [exchanges]);
-
-  const classItems = useMemo(
-    () =>
-      keyValuePairs?.stockClass
-        ? Object.entries(keyValuePairs.stockClass).map(([value, label]) => ({
-            value: value,
-            label,
-          }))
-        : [],
-    [keyValuePairs?.stockClass],
-  );
-
-  const bucketItems = useMemo(
-    () =>
-      keyValuePairs?.bucket
-        ? Object.entries(keyValuePairs.bucket).map(([value, label]) => ({
-            value: value as Bucket,
-            label,
-          }))
-        : [],
-    [keyValuePairs?.bucket],
-  );
+  const marketItems = useMemo(() => getMarketItemsFromExchanges(exchanges), [exchanges]);
+  const classItems = useMemo(() => getStockClassItems(keyValuePairs), [keyValuePairs]);
+  const bucketItems = useMemo(() => getBucketItems(keyValuePairs), [keyValuePairs]);
 
   useEffect(() => {
-    if (!filters.market && marketItems.length > 0) {
-      setFilters((prev) => ({
-        ...prev,
-        market: prev.market || getDefaultMarketValue(marketItems),
-        stockClass: prev.stockClass || getDefaultStockClassValue(classItems),
-      }));
-    }
-  }, [marketItems, filters.market]);
+    if (!marketItems.length || !classItems.length) return;
+    if (filters.market && filters.stockClass) return;
+
+    setFilters((prev) => ({
+      ...prev,
+      market: prev.market || getDefaultMarketValue(marketItems),
+      stockClass: prev.stockClass || getDefaultStockClassValue(classItems),
+    }));
+  }, [marketItems, classItems, filters.market, filters.stockClass]);
 
   const marketLabel = (m: string) => marketItems.find((item) => item.value === m)?.label ?? m;
   const classLabel = (c: string) => keyValuePairs?.stockClass?.[c] ?? c;
@@ -170,7 +142,7 @@ export default function Ticker() {
   };
 
   useEffect(() => {
-    if (!filters.market) return;
+    if (!filters.market || !filters.stockClass) return;
     void fetchRows();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters.market, filters.stockClass]);
@@ -178,8 +150,10 @@ export default function Ticker() {
   const openCreate = () => {
     setEditing(null);
     setForm({
-      ...DEFAULT_FORM,
+      ...EMPTY_FORM,
       market: getDefaultMarketValue(marketItems),
+      stockClasses: classItems.length ? [getDefaultStockClassValue(classItems)] : [],
+      bucket: getDefaultBucketValues(bucketItems)[0] ?? '',
     });
     resetSymbolSearch();
     setOpen(true);
@@ -196,13 +170,15 @@ export default function Ticker() {
       bucket: t.bucket,
     });
 
-    // make the autosuggest show the current symbol
-    setSelectedSymbol({
+    const toSelectedSymbol = (t: TickerDTO): SymbolSuggestDTO => ({
       symbolId: 0,
       symbol: t.symbol,
       description: t.companyName,
       lastPrice: null,
-    } as any);
+    });
+
+    // make the autosuggest show the current symbol
+    setSelectedSymbol(toSelectedSymbol(t));
     setSymbolInput(t.symbol);
     setSymbolOptions([]); // avoid showing stale search results
 
@@ -228,7 +204,9 @@ export default function Ticker() {
       !exchangesLoading &&
       form.symbol.trim().length >= 1 &&
       form.companyName.trim().length >= 1 &&
-      form.stockClasses.length >= 1
+      form.market.trim().length >= 1 &&
+      form.stockClasses.length >= 1 &&
+      form.bucket.trim().length >= 1
     );
   }, [form, pairsLoading, exchangesLoading]);
 
@@ -381,10 +359,7 @@ export default function Ticker() {
               sx={{ mt: 1 }}
               onChange={(v) => {
                 setForm((p) => ({ ...p, market: v, symbol: '' }));
-
-                setSelectedSymbol(null);
-                setSymbolInput('');
-                setSymbolOptions([]);
+                resetSymbolSearch();
               }}
             />
 

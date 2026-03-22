@@ -27,7 +27,14 @@ import { derivePositionFields, pickDefaultBroker } from '../../utils/stock/Dashb
 import { compareBySort, isFavorable } from '../../utils/stock/tickerSorting';
 import { enableSound, playChime } from '../../utils/stock/chimes';
 import { useKeyValuePairs } from '../../hooks/stock/useKeyValuePairs';
-import { getDefaultStockClassValue, getDefaultMarketValue } from '../../utils/stock/filter';
+import {
+  getBrokerItems,
+  getBrokerLabels,
+  getDefaultMarketValue,
+  getDefaultStockClassValue,
+  getMarketItemsFromExchanges,
+  getStockClassItems,
+} from '../../utils/stock/prepareDropdownOptions';
 import { useStockExchanges } from '../../hooks/stock/useStockExchanges';
 import { useBrokerAccounts } from '../../hooks/stock/useBrokerAccounts';
 
@@ -35,11 +42,6 @@ const toIso = (v: string | Date | null | undefined) =>
   !v ? null : typeof v === 'string' ? new Date(v).toISOString() : v.toISOString();
 
 type ChimeKey = 'green' | 'cyan' | 'orange' | 'red';
-
-type BrokerItem = {
-  value: string;
-  label: string;
-};
 
 export default function Dashboard() {
   const { showSnackbar } = useSnackbar();
@@ -94,63 +96,21 @@ export default function Dashboard() {
     [tickers],
   );
 
-  // known brokers
-  const brokerItems: BrokerItem[] = useMemo(() => {
-    return brokerAccounts.map((acc) => ({
-      value: acc.id,
-      label: `${acc.broker} - ${acc.name}`,
-    }));
-  }, [brokerAccounts]);
-
-  const brokerLabels = useMemo(() => {
-    const map: Record<string, string> = {};
-
-    for (const acc of brokerAccounts) {
-      map[acc.id] = `${acc.broker} - ${acc.name}`;
-    }
-
-    return map;
-  }, [brokerAccounts]);
-
-  const marketItems = useMemo(() => {
-    const seen = new Set<string>();
-    const result: { value: string; label: string }[] = [];
-
-    for (const exchange of exchanges) {
-      const value = exchange.country.trim().toLowerCase();
-      if (seen.has(value)) continue;
-      seen.add(value);
-      result.push({ value, label: exchange.country });
-    }
-
-    result.sort((a, b) => a.label.localeCompare(b.label));
-    return result;
-  }, [exchanges]);
-
-  const classItems = useMemo(
-    () =>
-      keyValuePairs?.stockClass
-        ? Object.entries(keyValuePairs.stockClass).map(([value, label]) => ({
-            value,
-            label,
-          }))
-        : [],
-    [keyValuePairs?.stockClass],
-  );
+  const brokerItems = useMemo(() => getBrokerItems(brokerAccounts), [brokerAccounts]);
+  const brokerLabels = useMemo(() => getBrokerLabels(brokerAccounts), [brokerAccounts]);
+  const marketItems = useMemo(() => getMarketItemsFromExchanges(exchanges), [exchanges]);
+  const classItems = useMemo(() => getStockClassItems(keyValuePairs), [keyValuePairs]);
 
   // set default filters with fetched market and stockclass
   useEffect(() => {
-    if (
-      (!filters.market || !filters.stockClass) &&
-      marketItems.length > 0 &&
-      classItems.length > 0
-    ) {
-      setFilters((prev) => ({
-        ...prev,
-        market: prev.market || getDefaultMarketValue(marketItems),
-        stockClass: prev.stockClass || getDefaultStockClassValue(classItems),
-      }));
-    }
+    if (!marketItems.length || !classItems.length) return;
+    if (filters.market && filters.stockClass) return;
+
+    setFilters((prev) => ({
+      ...prev,
+      market: prev.market || getDefaultMarketValue(marketItems),
+      stockClass: prev.stockClass || getDefaultStockClassValue(classItems),
+    }));
   }, [filters.market, filters.stockClass, marketItems, classItems]);
 
   // ---- initial fetch
