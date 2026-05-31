@@ -1,29 +1,41 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  Dialog, DialogTitle, DialogContent, DialogActions,
-  Button, Box, TextField, FormControl, InputLabel, Select, MenuItem,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  Box,
+  TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from '@mui/material';
-
-import type { BrokerId, TickerOption } from '../../../types/stock/ticker.types';
-import type { CreateTradeDTO, TradeDialogMode, TradeType } from '../../../types/stock/trade.types';
+import type { TickerOption } from '../../../types/stock/ticker.types';
+import type {
+  CreateTradeDTO,
+  TradeDialogMode,
+  TradeType,
+  UpdateTradeDTO,
+} from '../../../types/stock/trade.types';
 import { createTrade, updateTrade } from '../../../services/stock/trade-api';
 import { SingleTickerSelect } from './SingleTickerSelect';
-import { BrokerSelect, type BrokerItem } from './BrokerSelect';
+import { BrokerSelect } from './BrokerSelect';
+import type { DropdownItem } from '../../../utils/stock/prepareDropdownOptions';
 
 type FormState = {
   symbol: string;
   tickerId: string;
   tradeType: TradeType;
-  broker: BrokerId;
-  rate: string;      // keep as string so it can be blank
-  quantity: string;  // same idea
+  brokerAccountId: string;
+  rate: string; // keep as string so it can be blank
+  quantity: string; // same idea
   totalAmount: string; // same idea
-  profit: string;   // same idea
+  profit: string; // same idea
   tradeDatetimeIso: string; // ISO string or local formatted, depending on your existing picker
-  brokerageFee: string;               // store as string for TextField
+  brokerageFee: string; // store as string for TextField
 };
-
-const DEFAULT_BROKER: BrokerId = 'wealthsimple';
 
 // ----- datetime helpers -----
 // Convert ISO -> "YYYY-MM-DDTHH:mm" for <input type="datetime-local">
@@ -50,12 +62,15 @@ function nowIso() {
   return new Date().toISOString();
 }
 
-function resetForm(preset?: { tickerId?: string; type?: TradeType }): FormState {
+function resetForm(
+  defaultBrokerAccountId: string,
+  preset?: { tickerId?: string; type?: TradeType },
+): FormState {
   return {
     symbol: '',
     tickerId: preset?.tickerId ?? '',
     tradeType: preset?.type ?? 'buy',
-    broker: DEFAULT_BROKER,
+    brokerAccountId: defaultBrokerAccountId,
     rate: '',
     quantity: '1',
     totalAmount: '',
@@ -70,7 +85,8 @@ export function CreateTradeDialog(props: {
   onClose: () => void;
   mode: TradeDialogMode;
   tickers: TickerOption[];
-  brokerItems: BrokerItem[];
+  brokerItems: DropdownItem[];
+  defaultBrokerAccountId?: string;
 
   fixedTickerId?: string;
   presetType?: 'buy' | 'sell';
@@ -81,20 +97,28 @@ export function CreateTradeDialog(props: {
   onSaved?: () => void | Promise<void>;
 }) {
   const {
-    open, onClose, mode, tickers,
-    fixedTickerId, presetType,
-    editingTradeId, initialValues,
+    open,
+    onClose,
+    mode,
+    tickers,
+    defaultBrokerAccountId = '',
+    fixedTickerId,
+    presetType,
+    editingTradeId,
+    initialValues,
   } = props;
 
   const [saving, setSaving] = useState(false);
   const [totalAmountTouched, setTotalAmountTouched] = useState(false);
 
   const [form, setForm] = useState<FormState>(() =>
-    resetForm({ tickerId: fixedTickerId, type: presetType })
+    resetForm(defaultBrokerAccountId, { tickerId: fixedTickerId, type: presetType }),
   );
 
   // Separate local input string for datetime-local (full mode only)
-  const [tradeDtLocal, setTradeDtLocal] = useState<string>(() => isoToLocalInput(form.tradeDatetimeIso));
+  const [tradeDtLocal, setTradeDtLocal] = useState<string>(() =>
+    isoToLocalInput(form.tradeDatetimeIso),
+  );
 
   // refs for focus behavior
   const tickerInputRef = useRef<HTMLInputElement | null>(null);
@@ -105,9 +129,10 @@ export function CreateTradeDialog(props: {
     if (!open) return;
 
     // If editing, load initial; else reset with presets
-    const next = (editingTradeId && initialValues)
-      ? ({ ...resetForm(), ...initialValues } as FormState)
-      : resetForm({ tickerId: fixedTickerId, type: presetType });
+    const next =
+      editingTradeId && initialValues
+        ? ({ ...resetForm(defaultBrokerAccountId), ...initialValues } as FormState)
+        : resetForm(defaultBrokerAccountId, { tickerId: fixedTickerId, type: presetType });
 
     setForm(next);
     setTradeDtLocal(isoToLocalInput(next.tradeDatetimeIso));
@@ -120,7 +145,15 @@ export function CreateTradeDialog(props: {
     }, 0);
 
     return () => clearTimeout(t);
-  }, [open, mode, fixedTickerId, presetType, editingTradeId, initialValues]);
+  }, [
+    open,
+    mode,
+    defaultBrokerAccountId,
+    fixedTickerId,
+    presetType,
+    editingTradeId,
+    initialValues,
+  ]);
 
   // Auto-compute totalAmount = rate * quantity unless user has manually edited it
   useEffect(() => {
@@ -139,7 +172,7 @@ export function CreateTradeDialog(props: {
     // avoid infinite loops / noisy re-renders
     const next = computed.toFixed(2);
     if (form.totalAmount !== next) {
-      setForm(p => ({ ...p, totalAmount: next }));
+      setForm((p) => ({ ...p, totalAmount: next }));
     }
   }, [open, form.rate, form.quantity, totalAmountTouched]);
 
@@ -151,7 +184,7 @@ export function CreateTradeDialog(props: {
   const submit = async () => {
     // Basic validation
     if (!form.tickerId) return;
-    if (!form.broker?.trim()) return;
+    if (!form.brokerAccountId?.trim()) return;
 
     const rateNum = Number(form.rate);
     const qtyNum = Number(form.quantity);
@@ -162,21 +195,19 @@ export function CreateTradeDialog(props: {
     if (!Number.isFinite(rateNum) || rateNum <= 0) return;
     if (!Number.isFinite(qtyNum) || qtyNum <= 0) return;
     if (!Number.isFinite(totalAmountNum) || totalAmountNum <= 0) return;
-    if (form.profit.trim() && (!Number.isFinite(profitNum!))) return;
+    if (form.profit.trim() && !Number.isFinite(profitNum!)) return;
 
     const symbolToSend =
-      tickers.find(t => t.id === form.tickerId)?.symbol?.trim() ||
-      form.symbol?.trim() ||
-      '';
+      tickers.find((t) => t.id === form.tickerId)?.symbol?.trim() || form.symbol?.trim() || '';
 
     const body: CreateTradeDTO = {
       symbol: symbolToSend, // server fills this based on tickerId
       tickerId: form.tickerId,
       tradeType: form.tradeType,
-      broker: form.broker,
+      brokerAccountId: form.brokerAccountId,
       rate: rateNum,
       quantity: qtyNum,
-      totalAmount: totalAmountNum as any,
+      totalAmount: totalAmountNum,
       tradeDatetime: form.tradeDatetimeIso,
 
       brokerageFee: Number.isFinite(feeNum) ? feeNum : 0,
@@ -187,7 +218,7 @@ export function CreateTradeDialog(props: {
     setSaving(true);
     try {
       if (editingTradeId) {
-        await updateTrade(editingTradeId, body as any);
+        await updateTrade(editingTradeId, body as UpdateTradeDTO);
       } else {
         await createTrade(body);
       }
@@ -201,20 +232,15 @@ export function CreateTradeDialog(props: {
 
   // Render ticker selector:
   const fixed = mode === 'quick' && fixedTickerId;
-  const tickerValue = tickers.find(t => t.id === form.tickerId) ?? null;
+  const tickerValue = tickers.find((t) => t.id === form.tickerId) ?? null;
 
   const tickerField = fixed ? (
-    <TextField
-      size="small"
-      label="Ticker"
-      value={tickerValue?.symbol ?? ''}
-      disabled
-    />
+    <TextField size="small" label="Ticker" value={tickerValue?.symbol ?? ''} disabled />
   ) : (
     <SingleTickerSelect
       tickers={tickers}
       value={tickerValue}
-      onChange={(v) => setForm(p => ({ ...p, tickerId: v?.id ?? '', symbol: v?.symbol ?? '' }))}
+      onChange={(v) => setForm((p) => ({ ...p, tickerId: v?.id ?? '', symbol: v?.symbol ?? '' }))}
       label="Ticker"
       disabled={saving}
     />
@@ -229,7 +255,7 @@ export function CreateTradeDialog(props: {
       label="Rate"
       value={form.rate}
       inputRef={rateRef} // <— focus for quick mode
-      onChange={(e) => setForm(p => ({ ...p, rate: e.target.value }))}
+      onChange={(e) => setForm((p) => ({ ...p, rate: e.target.value }))}
       inputProps={{ inputMode: 'decimal' }}
     />
   );
@@ -239,20 +265,21 @@ export function CreateTradeDialog(props: {
       size="small"
       label="Quantity"
       value={form.quantity}
-      onChange={(e) => setForm(p => ({ ...p, quantity: e.target.value }))}
+      onChange={(e) => setForm((p) => ({ ...p, quantity: e.target.value }))}
       inputProps={{ inputMode: 'numeric' }}
     />
   );
 
-  const profitField = form.tradeType === 'sell' ? (
-    <TextField
-      size="small"
-      label="Profit"
-      value={form.profit}
-      onChange={(e) => setForm(p => ({ ...p, profit: e.target.value }))}
-      inputProps={{ inputMode: 'decimal' }}
-    />
-  ) : null;
+  const profitField =
+    form.tradeType === 'sell' ? (
+      <TextField
+        size="small"
+        label="Profit"
+        value={form.profit}
+        onChange={(e) => setForm((p) => ({ ...p, profit: e.target.value }))}
+        inputProps={{ inputMode: 'decimal' }}
+      />
+    ) : null;
 
   const totalAmountField = (
     <TextField
@@ -262,7 +289,7 @@ export function CreateTradeDialog(props: {
       onChange={(e) => {
         const v = e.target.value;
         setTotalAmountTouched(true);
-        setForm(p => ({ ...p, totalAmount: v }));
+        setForm((p) => ({ ...p, totalAmount: v }));
         // Optional: if they clear it, resume auto mode
         if (v.trim() === '') setTotalAmountTouched(false);
       }}
@@ -276,11 +303,13 @@ export function CreateTradeDialog(props: {
       <Select
         label="Type"
         value={form.tradeType}
-        onChange={(e) => setForm(p => ({
-          ...p,
-          tradeType: e.target.value as any,
-          profit: e.target.value === 'sell' ? p.profit : '', // clear profit if switching to buy
-        }))}
+        onChange={(e) =>
+          setForm((p) => ({
+            ...p,
+            tradeType: e.target.value as TradeType,
+            profit: e.target.value === 'sell' ? p.profit : '', // clear profit if switching to buy
+          }))
+        }
       >
         <MenuItem value="buy">Buy</MenuItem>
         <MenuItem value="sell">Sell</MenuItem>
@@ -290,11 +319,10 @@ export function CreateTradeDialog(props: {
 
   const brokerField = (
     <BrokerSelect
-      value={(form.broker as BrokerId) ?? 'wealthsimple'}
-      onChange={(v) => setForm(p => ({ ...p, broker: v as any }))}
-      items={props.brokerItems as any}
+      value={form.brokerAccountId}
+      onChange={(v) => setForm((p) => ({ ...p, brokerAccountId: v }))}
+      items={props.brokerItems}
       disabled={saving}
-      // In dialog we do NOT want "All"
       includeAllOption={false}
     />
   );
@@ -306,29 +334,30 @@ export function CreateTradeDialog(props: {
       label="Brokerage Fee"
       type="number"
       value={form.brokerageFee}
-      onChange={(e) => setForm(p => ({ ...p, brokerageFee: e.target.value }))}
+      onChange={(e) => setForm((p) => ({ ...p, brokerageFee: e.target.value }))}
       inputProps={{ step: '0.01' }}
     />
   );
 
-  const tradeDatetimeField = mode === 'full' ? (
-    <TextField
-      size="small"
-      label="Trade Datetime"
-      type="datetime-local"
-      value={tradeDtLocal}
-      onChange={(e) => {
-        const nextLocal = e.target.value;
-        setTradeDtLocal(nextLocal);
+  const tradeDatetimeField =
+    mode === 'full' ? (
+      <TextField
+        size="small"
+        label="Trade Datetime"
+        type="datetime-local"
+        value={tradeDtLocal}
+        onChange={(e) => {
+          const nextLocal = e.target.value;
+          setTradeDtLocal(nextLocal);
 
-        // Keep ISO in form state (UTC instant)
-        if (nextLocal) {
-          setForm(p => ({ ...p, tradeDatetimeIso: localInputToIso(nextLocal) }));
-        }
-      }}
-      InputLabelProps={{ shrink: true }}
-    />
-  ) : null;
+          // Keep ISO in form state (UTC instant)
+          if (nextLocal) {
+            setForm((p) => ({ ...p, tradeDatetimeIso: localInputToIso(nextLocal) }));
+          }
+        }}
+        InputLabelProps={{ shrink: true }}
+      />
+    ) : null;
 
   return (
     <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
@@ -337,7 +366,10 @@ export function CreateTradeDialog(props: {
       {/* form wrapper => Enter submits */}
       <Box
         component="form"
-        onSubmit={(e) => { e.preventDefault(); submit(); }}
+        onSubmit={(e) => {
+          e.preventDefault();
+          submit();
+        }}
       >
         <DialogContent>
           <Box sx={{ display: 'grid', gap: 1.5 }}>
@@ -367,12 +399,13 @@ export function CreateTradeDialog(props: {
                 {tradeDatetimeField}
               </>
             )}
-
           </Box>
         </DialogContent>
 
         <DialogActions>
-          <Button onClick={handleClose} disabled={saving}>Cancel</Button>
+          <Button onClick={handleClose} disabled={saving}>
+            Cancel
+          </Button>
           <Button type="submit" variant="contained" disabled={saving}>
             {editingTradeId ? 'Save' : 'Create'}
           </Button>

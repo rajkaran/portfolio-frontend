@@ -1,21 +1,19 @@
 import { FormControl, InputLabel, MenuItem, Select } from '@mui/material';
 import type { SxProps, Theme } from '@mui/material/styles';
-import type { BrokerId } from '../../../types/stock/ticker.types';
-
-export type BrokerItem = { value: BrokerId; label: string };
+import type { DropdownItem } from '../../../utils/stock/prepareDropdownOptions';
 
 export function BrokerSelect(props: {
-  value: BrokerId | ''; // '' means All (for filters) or can be a concrete broker in forms
-  onChange: (v: BrokerId | '') => void;
-  items: BrokerItem[];
+  value: string | ''; // '' means All (for filters) or can be a concrete broker in forms
+  onChange: (v: string | '') => void;
+  items: DropdownItem[];
 
   label?: string;
   size?: 'small' | 'medium';
   disabled?: boolean;
   sx?: SxProps<Theme>;
 
-  includeAllOption?: boolean;     // for filter usage
-  allLabel?: string;             // optional
+  includeAllOption?: boolean; // for filter usage
+  allLabel?: string; // optional
 }) {
   const {
     value,
@@ -32,11 +30,7 @@ export function BrokerSelect(props: {
   return (
     <FormControl size={size} sx={sx} disabled={disabled}>
       <InputLabel>{label}</InputLabel>
-      <Select
-        label={label}
-        value={value}
-        onChange={(e) => onChange(e.target.value as BrokerId | '')}
-      >
+      <Select label={label} value={value} onChange={(e) => onChange(String(e.target.value))}>
         {includeAllOption && <MenuItem value="">{allLabel}</MenuItem>}
         {items.map((b) => (
           <MenuItem key={b.value} value={b.value}>
