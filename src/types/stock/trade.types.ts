@@ -19,6 +19,9 @@ export type TradeDTO = {
 
   tradeDatetime: string; // ISO
   createDatetime: string; // ISO
+
+  purpose?: string;
+  reason?: string;
 };
 
 export type CreateTradeDTO = Omit<TradeDTO, 'id' | 'createDatetime'>;

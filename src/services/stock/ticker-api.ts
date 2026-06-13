@@ -8,7 +8,7 @@ import type {
 } from '../../types/stock/ticker.types';
 import { loopbackApi } from './loopback-api';
 
-export async function listTickers(params?: { market?: string; stockClass?: string }) {
+export async function listTickers(params?: { market?: string; stockClass?: string; bucket?: string }) {
   const and: Array<Record<string, unknown>> = [];
 
   if (params?.market) and.push({ market: params.market });
@@ -16,6 +16,10 @@ export async function listTickers(params?: { market?: string; stockClass?: strin
   if (params?.stockClass) {
     // More explicit for array fields (stockClasses is string[])
     and.push({ stockClasses: { inq: [params.stockClass] } });
+  }
+
+  if(params?.bucket){
+    and.push({ bucket: params.bucket });
   }
 
   and.push({ isActive: true });
@@ -30,6 +34,7 @@ export async function listTickers(params?: { market?: string; stockClass?: strin
       market: true,
       stockClasses: true,
       industry: true,
+      industryTags: true,
       bucket: true,
     },
   };
@@ -66,7 +71,8 @@ export async function listTickerLatest(
       companyName: true,
       market: true,
       stockClasses: true,
-      industry: true,
+      // industry: true,
+      industryTags: true,
       bucket: true,
 
       symbolId: true,
@@ -113,4 +119,13 @@ export async function patchTickerThresholds(tickerId: string, patch: ThresholdPa
 
 export async function deleteTicker(id: string) {
   await loopbackApi.delete(`/tickers/${id}`);
+}
+
+export async function getIndustryTags(): Promise<string[]>{
+  const res = await loopbackApi.get<string[]>('/industry-tags');
+  return res.data;
+}
+
+export async function createIndustryTag(name: string): Promise<void>{
+  await loopbackApi.post('/industry-tags', { name });
 }

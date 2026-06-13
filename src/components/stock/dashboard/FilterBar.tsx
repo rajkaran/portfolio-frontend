@@ -81,60 +81,60 @@ export default function FilterBar({
     .filter(isDefined);
 
   return (
-    <Box
-      sx={{
-        display: 'grid',
-        gap: 1.5,
-        alignItems: 'center',
-        gridTemplateColumns: {
-          xs: '1fr 1fr',
-          md: '160px 160px 220px 1fr',
-        },
-      }}
-    >
-      <MarketSelect
-        value={marketItems.length ? value.market : ''}
-        items={marketItems}
-        onChange={(v) => set('market', v)}
-        disabled={exchangesLoading}
-        sx={{ minWidth: 0 }}
-      />
+        <Box
+          sx={{
+            display: 'grid',
+            gap: 1.5,
+            alignItems: 'center',
+            gridTemplateColumns: {
+              xs: '1fr 1fr',
+              md: '160px 160px 220px 1fr',
+            },
+          }}
+          >
+          <MarketSelect
+            value={marketItems.length ? value.market : ''}
+            items={marketItems}
+            onChange={(v) => set('market', v)}
+            disabled={exchangesLoading}
+            sx={{ minWidth: 0 }}
+            />
 
-      <StockClassSelect
-        value={classItems.length ? value.stockClass : ''}
-        items={classItems}
-        onChange={(v) => set('stockClass', v)}
-        disabled={pairsLoading}
-        sx={{ minWidth: 0 }}
-      />
+          <StockClassSelect
+            value={classItems.length ? value.stockClass : ''}
+            items={classItems}
+            onChange={(v) => set('stockClass', v)}
+            disabled={pairsLoading}
+            sx={{ minWidth: 0 }}
+            />
 
-      <FormControl size="small" sx={{ minWidth: 0 }}>
-        <InputLabel>Sort by</InputLabel>
-        <Select
-          label="Sort by"
-          value={value.sortBy}
-          onChange={(e) => set('sortBy', e.target.value as SortBy)}
-        >
-          <MenuItem value="az">A → Z</MenuItem>
-          <MenuItem value="za">Z → A</MenuItem>
-          <MenuItem value="bucket">Bucket (core→watch→once→avoid)</MenuItem>
-          <MenuItem value="favorability">Favorability</MenuItem>
-        </Select>
-      </FormControl>
+          <FormControl size="small" sx={{ minWidth: 0 }}>
+            <InputLabel>Sort by</InputLabel>
+            <Select
+              label="Sort by"
+              value={value.sortBy}
+              onChange={(e) => set('sortBy', e.target.value as SortBy)}
+              >
+              <MenuItem value="az">A → Z</MenuItem>
+              <MenuItem value="za">Z → A</MenuItem>
+              <MenuItem value="bucket">Bucket (core→watch→once→avoid)</MenuItem>
+              <MenuItem value="favorability">Favorability</MenuItem>
+            </Select>
+          </FormControl>
 
-      <TickerAutosuggest
-        tickers={optionList}
-        value={selectedTickers}
-        onChange={(next) =>
-          set(
-            'symbols',
-            next.map((t) => t.symbol),
-          )
-        }
-        disabled={loading}
-        label="Tickers"
-        placeholder="Type symbol or company name"
-      />
-    </Box>
+          <TickerAutosuggest
+            tickers={optionList}
+            value={selectedTickers}
+            onChange={(next) =>
+              set(
+                'symbols',
+                next.map((t) => t.symbol),
+                )
+              }
+              disabled={loading}
+              label="Tickers"
+              placeholder="Type symbol or company name"
+              />
+        </Box>
   );
 }

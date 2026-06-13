@@ -34,6 +34,7 @@ export function getBucketItems(keyValuePairs: KeyValueMap | undefined): Dropdown
 }
 
 export function formatBrokerAccountLabel(account: BrokerAccountDTO): string {
+  // if(account.alias?.trim()) return account.alias.trim();
   const broker = account.broker?.trim();
   const name = account.name?.trim();
 
@@ -41,10 +42,18 @@ export function formatBrokerAccountLabel(account: BrokerAccountDTO): string {
   return broker || name || account.id;
 }
 
-export function getBrokerItems(brokerAccounts: BrokerAccountDTO[] | undefined): DropdownItem[] {
+export function getBrokerItems(brokerAccounts: BrokerAccountDTO[] | undefined, selectedClass?: string): DropdownItem[] {
   if (!brokerAccounts?.length) return [];
 
-  return brokerAccounts.map((account) => ({
+  const sorted = selectedClass
+    ? [...brokerAccounts].sort((a, b) => {
+        const aMatch = a.stockClass === selectedClass ? 0 : 1;
+        const bMatch = b.stockClass === selectedClass ? 0 : 1;
+        return aMatch - bMatch;
+      })
+    : brokerAccounts;
+
+  return sorted.map((account) => ({
     value: account.id,
     label: formatBrokerAccountLabel(account),
   }));
@@ -59,6 +68,11 @@ export function getBrokerLabels(
 
   for (const account of brokerAccounts) {
     labels[account.id] = formatBrokerAccountLabel(account);
+
+    const key = account.broker.toLowerCase().replace(/\s+/g, '');;
+    if(!labels[key]) {
+      labels[key] = account.alias ?? account.broker;
+    }
   }
 
   return labels;
@@ -120,5 +134,7 @@ export function getDefaultBucketValues(items: DropdownItem[]): string[] {
 }
 
 export function getDefaultBrokerAccountId(items: DropdownItem[]): string {
-  return getPreferredDropdownValueByLabel(items, 'Wealthsimple - Non-registered');
+  // return getPreferredDropdownValueByLabel(items, 'WS NR');
+  // return getPreferredDropdownValue(items[0]?.value ?? '');
+  return items[0]?.value ?? ''
 }

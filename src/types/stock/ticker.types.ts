@@ -33,7 +33,7 @@ export type TickerLatestDTO = {
   companyName?: string;
   market: string;
   stockClasses: string[];
-  industry: string;
+  industryTags: string[];
   bucket: string;
 
   symbolId?: number | null;
@@ -66,7 +66,7 @@ export type TickerDTO = {
   companyName: string;
   market: string;
   stockClasses: string[];
-  industry: string;
+  industryTags: string[];
   bucket: string;
 };
 
@@ -102,6 +102,7 @@ export const defaultStockFilters: StockFilters = {
 export type FilterState = {
   market: string;
   stockClass: string;
+  bucket: string;
 };
 
 export type FormState = {
@@ -109,6 +110,6 @@ export type FormState = {
   companyName: string;
   market: string;
   stockClasses: string[];
-  industry: string;
+  industryTags: string[];
   bucket: string;
 };

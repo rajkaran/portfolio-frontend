@@ -23,6 +23,7 @@ import {
   getMarketItemsFromExchanges,
   getStockClassItems,
 } from '../../utils/stock/prepareDropdownOptions';
+import CollapsibleTopBar from '../../components/stock/layout/CollapsibleTopBar';
 
 function chunk<T>(arr: T[], size: number): T[][] {
   if (size <= 0) return [arr];
@@ -443,42 +444,46 @@ export default function ChartWall() {
 
   return (
     <StockShell>
-      <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', mb: 1 }}>
-        <Typography variant="h5" sx={{ fontWeight: 500 }}>
-          Stock Wall
-        </Typography>
-        <Typography variant="body2" sx={{ opacity: 0.8 }}>
-          WS: {wsConnected ? 'connected' : 'disconnected'}
-        </Typography>
-      </Box>
+      <CollapsibleTopBar 
+        title={
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span>Stock Wall</span>
+            <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75 }}>
+              <Typography variant="body2" sx={{ opacity: 0.8 }}>
+                WS: {wsConnected ? 'connected' : 'disconnected'}
+              </Typography>
+            </Box>
+          </Box>
+        }
+      >
+        <ChartWallControls
+          market={market}
+          onMarket={setMarket}
+          stockClass={stockClass}
+          onStockClass={setStockClass}
+          buckets={buckets}
+          onBuckets={setBuckets}
+          marketItems={marketItems}
+          classItems={classItems}
+          bucketItems={bucketItems}
+          perTab={perTab}
+          onPerTab={setPerTab}
+          rotateOn={rotateOn}
+          onRotateOn={setRotateOn}
+          rotateSec={rotateSec}
+          onRotateSec={setRotateSec}
+          filteredTickers={filteredTickers}
+          selectedTickers={selectedTickers}
+          onSelectedTickers={onSelectedTickers}
+          loadingTickers={loadingTickers}
+          loadingOptions={pairsLoading || exchangesLoading}
+        />
 
-      <ChartWallControls
-        market={market}
-        onMarket={setMarket}
-        stockClass={stockClass}
-        onStockClass={setStockClass}
-        buckets={buckets}
-        onBuckets={setBuckets}
-        marketItems={marketItems}
-        classItems={classItems}
-        bucketItems={bucketItems}
-        perTab={perTab}
-        onPerTab={setPerTab}
-        rotateOn={rotateOn}
-        onRotateOn={setRotateOn}
-        rotateSec={rotateSec}
-        onRotateSec={setRotateSec}
-        filteredTickers={filteredTickers}
-        selectedTickers={selectedTickers}
-        onSelectedTickers={onSelectedTickers}
-        loadingTickers={loadingTickers}
-        loadingOptions={pairsLoading || exchangesLoading}
-      />
-
-      <Typography variant="body2" sx={{ opacity: 0.85, mb: 1 }}>
-        Loaded day: <b>{formatLoadedDay(loadedDay, loadedTz || 'UTC')}</b>
-        {loadedTz ? ` (${loadedTz})` : ''}
-      </Typography>
+        <Typography variant="body2" sx={{ opacity: 0.85, mb: 1 }}>
+          Loaded day: <b>{formatLoadedDay(loadedDay, loadedTz || 'UTC')}</b>
+          {loadedTz ? ` (${loadedTz})` : ''}
+        </Typography>
+      </CollapsibleTopBar>
 
       <ChartWallTabs count={tabs.length} active={activeTab} onChange={setActiveTab} />
 

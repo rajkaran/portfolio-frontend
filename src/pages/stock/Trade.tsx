@@ -12,6 +12,7 @@ import {
   Tooltip,
   Typography,
   TablePagination,
+  Collapse,
 } from '@mui/material';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
@@ -50,6 +51,7 @@ export default function Trade() {
   const [totalCount, setTotalCount] = useState(0);
 
   const [loading, setLoading] = useState(false);
+  const [showFilters, setShowFilters] = useState(true);
 
   // filters
   const [filterSymbols, setFilterSymbols] = useState<string[]>([]);
@@ -95,6 +97,8 @@ export default function Trade() {
       profit: editing.profit != null ? String(editing.profit) : '',
       tradeDatetimeIso: new Date(editing.tradeDatetime).toISOString(),
       brokerageFee: editing.brokerageFee != null ? String(editing.brokerageFee) : '0',
+      purpose: editing.purpose ?? '',
+      reason: editing.reason ?? '',
     };
   }, [editing, defaultBrokerAccountId]);
 
@@ -305,47 +309,60 @@ export default function Trade() {
       </Stack>
 
       {/* Filters */}
-      <Box
-        sx={{
-          bgcolor: 'rgba(255,255,255,0.06)',
-          p: 2,
-          borderRadius: 2,
-          mb: 2,
-          display: 'grid',
-          gridTemplateColumns: { xs: '1fr 1fr', md: '2fr 1fr 2fr' },
-          gap: 1.5,
-        }}
-      >
-        <TickerAutosuggest
-          tickers={tickerOptions}
-          value={selectedTickers}
-          onChange={(next) => setFilterSymbols(next.map((t) => t.symbol))}
-          label="Tickers"
-          placeholder="Filter trades by ticker(s)"
-        />
+      <Box>
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
+          <Button
+            size="small" 
+            onClick={() => setShowFilters(!showFilters)}
+            sx={{ textTransform: 'none' }}
+            >
+            {showFilters ? 'Hide filters' : 'Show filters'}
+          </Button>
+        </Box>
+        <Collapse in={showFilters}>
+          <Box
+            sx={{
+              bgcolor: 'rgba(255,255,255,0.06)',
+              p: 2,
+              borderRadius: 2,
+              mb: 2,
+              display: 'grid',
+              gridTemplateColumns: { xs: '1fr 1fr', md: '2fr 1fr 2fr' },
+              gap: 1.5,
+            }}
+            >
+            <TickerAutosuggest
+              tickers={tickerOptions}
+              value={selectedTickers}
+              onChange={(next) => setFilterSymbols(next.map((t) => t.symbol))}
+              label="Tickers"
+              placeholder="Filter trades by ticker(s)"
+              />
 
-        <FormControl size="small">
-          <InputLabel>Type</InputLabel>
-          <Select
-            label="Type"
-            value={filterType}
-            onChange={(e) => setFilterType(e.target.value as TradeType | '')}
-          >
-            <MenuItem value="">All</MenuItem>
-            <MenuItem value="buy">Buy</MenuItem>
-            <MenuItem value="sell">Sell</MenuItem>
-          </Select>
-        </FormControl>
+            <FormControl size="small">
+              <InputLabel>Type</InputLabel>
+              <Select
+                label="Type"
+                value={filterType}
+                onChange={(e) => setFilterType(e.target.value as TradeType | '')}
+                >
+                <MenuItem value="">All</MenuItem>
+                <MenuItem value="buy">Buy</MenuItem>
+                <MenuItem value="sell">Sell</MenuItem>
+              </Select>
+            </FormControl>
 
-        <BrokerSelect
-          value={filterBrokerAccountId}
-          onChange={setFilterBrokerAccountId}
-          disabled={brokerAccountsLoading}
-          items={brokerItems}
-          includeAllOption
-          allLabel="All Brokers"
-          label="Broker"
-        />
+            <BrokerSelect
+              value={filterBrokerAccountId}
+              onChange={setFilterBrokerAccountId}
+              disabled={brokerAccountsLoading}
+              items={brokerItems}
+              includeAllOption
+              allLabel="All Brokers"
+              label="Broker"
+              />
+          </Box>
+        </Collapse>
       </Box>
 
       {/* Grid "table" */}

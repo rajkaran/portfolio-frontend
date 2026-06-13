@@ -20,7 +20,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import { useEffect, useMemo, useState } from 'react';
-import { searchSymbols } from '../../services/stock/ticker-api';
+import { createIndustryTag, getIndustryTags, searchSymbols } from '../../services/stock/ticker-api';
 import type {
   TickerDTO,
   SymbolSuggestDTO,
@@ -50,13 +50,14 @@ import {
   getMarketItemsFromExchanges,
   getStockClassItems,
 } from '../../utils/stock/prepareDropdownOptions';
+import { IndustryTagsInput } from '../../components/stock/shared/IndustryTagsInput';
 
 const EMPTY_FORM: FormState = {
   symbol: '',
   companyName: '',
   market: '',
   stockClasses: [],
-  industry: '',
+  industryTags: [],
   bucket: '',
 };
 
@@ -68,7 +69,7 @@ export default function Ticker() {
   const { data: exchanges, loading: exchangesLoading } = useStockExchanges(true);
 
   // Page state
-  const [filters, setFilters] = useState<FilterState>({ market: '', stockClass: '' });
+  const [filters, setFilters] = useState<FilterState>({ market: '', stockClass: '', bucket:'' });
   const [rows, setRows] = useState<TickerDTO[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -82,6 +83,7 @@ export default function Ticker() {
   const [symbolOptions, setSymbolOptions] = useState<SymbolSuggestDTO[]>([]);
   const [symbolLoading, setSymbolLoading] = useState(false);
   const [selectedSymbol, setSelectedSymbol] = useState<SymbolSuggestDTO | null>(null);
+  const [allTags, setAllTags] = useState<string[]>([]);
 
   const marketItems = useMemo(() => getMarketItemsFromExchanges(exchanges), [exchanges]);
   const classItems = useMemo(() => getStockClassItems(keyValuePairs), [keyValuePairs]);
@@ -97,6 +99,10 @@ export default function Ticker() {
       stockClass: prev.stockClass || getDefaultStockClassValue(classItems),
     }));
   }, [marketItems, classItems, filters.market, filters.stockClass]);
+
+  useEffect(()=>{
+    getIndustryTags().then(setAllTags).catch(()=>{});
+  }, []);
 
   const marketLabel = (m: string) => marketItems.find((item) => item.value === m)?.label ?? m;
   const classLabel = (c: string) => keyValuePairs?.stockClass?.[c] ?? c;
@@ -131,6 +137,7 @@ export default function Ticker() {
       const data = await listTickers({
         market: filters.market,
         stockClass: filters.stockClass,
+        bucket: filters.bucket || undefined,
       });
 
       setRows(data);
@@ -145,7 +152,7 @@ export default function Ticker() {
     if (!filters.market || !filters.stockClass) return;
     void fetchRows();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters.market, filters.stockClass]);
+  }, [filters.market, filters.stockClass, filters.bucket]);
 
   const openCreate = () => {
     setEditing(null);
@@ -166,7 +173,7 @@ export default function Ticker() {
       companyName: t.companyName,
       market: t.market || getDefaultMarketValue(marketItems),
       stockClasses: t.stockClasses,
-      industry: t.industry,
+      industryTags: t.industryTags ?? [],
       bucket: t.bucket,
     });
 
@@ -219,9 +226,13 @@ export default function Ticker() {
         companyName: form.companyName.trim(),
         market: form.market,
         stockClasses: form.stockClasses,
-        industry: form.industry,
+        industryTags: form.industryTags,
         bucket: form.bucket,
       };
+
+      for (const tag of form.industryTags ?? []) {
+        await createIndustryTag(tag).catch(() => {});
+      }
 
       if (!editing) {
         await createTicker(payload);
@@ -268,33 +279,45 @@ export default function Ticker() {
         </Stack>
 
         {/* Filters */}
-        <Box
-          sx={{
-            mt: 2,
-            display: 'grid',
-            gap: 1.5,
-            gridTemplateColumns: { xs: '1fr 1fr', md: '180px 180px 1fr' },
-            alignItems: 'center',
-          }}
-        >
-          <MarketSelect
-            value={marketItems.length ? filters.market : ''}
-            items={marketItems}
-            onChange={(v) => setFilters((p) => ({ ...p, market: v }))}
-            disabled={exchangesLoading}
-          />
+            <Box
+              sx={{
+                mt: 2,
+                display: 'grid',
+                gap: 1.5,
+                gridTemplateColumns: { xs: '1fr 1fr', md: '180px 180px 1fr' },
+                alignItems: 'center',
+              }}
+              >
+              <MarketSelect
+                value={marketItems.length ? filters.market : ''}
+                items={marketItems}
+                onChange={(v) => setFilters((p) => ({ ...p, market: v }))}
+                disabled={exchangesLoading}
+                />
 
-          <StockClassSelect
-            value={classItems.length ? filters.stockClass : ''}
-            items={classItems}
-            onChange={(v) => setFilters((p) => ({ ...p, stockClass: v }))}
-            disabled={pairsLoading}
-          />
+              <StockClassSelect
+                value={classItems.length ? filters.stockClass : ''}
+                items={classItems}
+                onChange={(v) => setFilters((p) => ({ ...p, stockClass: v }))}
+                disabled={pairsLoading}
+                />
 
-          <Box sx={{ justifySelf: { xs: 'start', md: 'end' }, opacity: 0.75 }}>
-            {loading ? 'Loading…' : `${rows.length} tickers`}
-          </Box>
-        </Box>
+              <BucketSelect
+                value={bucketItems.length ? filters.bucket : ''}
+                items={bucketItems}
+                onChange={(v) => setFilters((p) => ({ ...p, bucket: v }))}
+                disabled={pairsLoading}
+                />
+              <Box sx={{ 
+                gridColumn: { md: '4 / -1' },
+                justifySelf: 'end', 
+                opacity: 0.75,
+                alignSelf: 'center'
+              }}>
+              {/* <Box sx={{ justifySelf: { xs: 'start', md: 'end' }, opacity: 0.75 }}> */}
+                {loading ? 'Loading…' : `${rows.length} tickers`}
+              </Box>
+            </Box>
 
         {/* List */}
         <Box sx={{ mt: 2 }}>
@@ -324,7 +347,14 @@ export default function Ticker() {
                       ))}
                     </Stack>
                   </TableCell>
-                  <TableCell>{t.industry}</TableCell>
+                  <TableCell>
+                    {/* {t.industryTags} */}
+                    <Stack direction="row" flexWrap="wrap" >
+                      {(t.industryTags ?? []).map((tag) => (
+                        <Chip key={tag} size="small" label={tag} sx={{m: 0.25}} />
+                      ))}
+                    </Stack>
+                  </TableCell>
                   <TableCell>{bucketLabel(t.bucket)}</TableCell>
                   <TableCell align="right">
                     <IconButton size="small" onClick={() => openEdit(t)} aria-label="Edit">
@@ -394,12 +424,18 @@ export default function Ticker() {
               disabled={pairsLoading}
             />
 
-            <TextField
-              size="small"
-              label="Industry"
-              value={form.industry}
-              onChange={(e) => setForm((p) => ({ ...p, industry: e.target.value }))}
+            <IndustryTagsInput
+              value={form.industryTags ?? []}
+              onChange={(tags) => setForm((p) => ({ ...p, industryTags: tags }))}
+              allTags={allTags}
             />
+
+            {/* <TextField
+              size="small"
+              label="Industry Tags"
+              value={form.industryTags}
+              onChange={(e) => setForm((p) => ({ ...p, industryTags: e.target.value }))}
+            /> */}
 
             <BucketSelect
               value={bucketItems.length ? form.bucket : ''}

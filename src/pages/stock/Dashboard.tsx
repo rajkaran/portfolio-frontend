@@ -27,6 +27,8 @@ import { derivePositionFields, pickDefaultBroker } from '../../utils/stock/Dashb
 import { compareBySort, isFavorable } from '../../utils/stock/tickerSorting';
 import { enableSound, playChime } from '../../utils/stock/chimes';
 import { useKeyValuePairs } from '../../hooks/stock/useKeyValuePairs';
+// import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+// import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import {
   getBrokerItems,
   getBrokerLabels,
@@ -37,6 +39,7 @@ import {
 } from '../../utils/stock/prepareDropdownOptions';
 import { useStockExchanges } from '../../hooks/stock/useStockExchanges';
 import { useBrokerAccounts } from '../../hooks/stock/useBrokerAccounts';
+import CollapsibleTopBar from '../../components/stock/layout/CollapsibleTopBar';
 
 const toIso = (v: string | Date | null | undefined) =>
   !v ? null : typeof v === 'string' ? new Date(v).toISOString() : v.toISOString();
@@ -56,6 +59,7 @@ export default function Dashboard() {
   const [zoomAnchorEl, setZoomAnchorEl] = useState<HTMLElement | null>(null);
   const [silencedById, setSilencedById] = useState<Record<string, boolean>>({});
   const [soundEnabled, setSoundEnabled] = useState(false);
+  // const [showFilters, setShowFilters] = useState(false);
 
   // snapshot state
   const [tickerMap, setTickerMap] = useState<Map<string, TickerLatestDTO>>(new Map());
@@ -96,7 +100,7 @@ export default function Dashboard() {
     [tickers],
   );
 
-  const brokerItems = useMemo(() => getBrokerItems(brokerAccounts), [brokerAccounts]);
+  const brokerItems = useMemo(() => getBrokerItems(brokerAccounts, filters.stockClass), [brokerAccounts, filters.stockClass]);
   const brokerLabels = useMemo(() => getBrokerLabels(brokerAccounts), [brokerAccounts]);
   const marketItems = useMemo(() => getMarketItemsFromExchanges(exchanges), [exchanges]);
   const classItems = useMemo(() => getStockClassItems(keyValuePairs), [keyValuePairs]);
@@ -258,7 +262,7 @@ export default function Dashboard() {
 
           const next = new Map(prev);
 
-          const broker = m.patch.broker;
+          const broker = m.patch.brokerAccountId;
           const prevPos = existing.positionsByBroker ?? {};
           const prevSnap = prevPos[broker] ?? {};
 
@@ -454,36 +458,25 @@ export default function Dashboard() {
         />
       )}
     >
-      <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', mb: 1 }}>
-        <Typography variant="h5" sx={{ fontWeight: 500 }}>
-          Dashboard
+      <CollapsibleTopBar
+  title={
+    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <span>Dashboard</span>
+      <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75 }}>
+        <Tooltip title={soundEnabled ? 'Sound: ON (click to mute)' : 'Sound: OFF (click to enable)'}>
+          <IconButton size="small" onClick={toggleSound} sx={{ p: 0.25 }}>
+            {soundEnabled ? <VolumeUpIcon fontSize="small" /> : <VolumeOffIcon fontSize="small" />}
+          </IconButton>
+        </Tooltip>
+        <Typography variant="body2" sx={{ opacity: 0.8 }}>
+          WS: {wsConnected ? 'connected' : 'disconnected'}
         </Typography>
-        <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75 }}>
-          <Tooltip
-            title={soundEnabled ? 'Sound: ON (click to mute)' : 'Sound: OFF (click to enable)'}
-          >
-            <IconButton
-              size="small"
-              onClick={toggleSound}
-              aria-label={soundEnabled ? 'Disable sound' : 'Enable sound'}
-              sx={{ p: 0.25 }}
-            >
-              {soundEnabled ? (
-                <VolumeUpIcon fontSize="small" />
-              ) : (
-                <VolumeOffIcon fontSize="small" />
-              )}
-            </IconButton>
-          </Tooltip>
-
-          <Typography variant="body2" sx={{ opacity: 0.8 }}>
-            WS: {wsConnected ? 'connected' : 'disconnected'}
-          </Typography>
-        </Box>
       </Box>
-      <Box>
-        <FilterBar value={filters} onChange={onFiltersChange} tickers={tickers} />
-      </Box>
+    </Box>
+  }
+>
+  <FilterBar value={filters} onChange={onFiltersChange} tickers={tickers} />
+</CollapsibleTopBar>
       <TickerGrid
         tickers={visibleTickers}
         brokerLabels={brokerLabels}
@@ -510,6 +503,14 @@ export default function Dashboard() {
         brokerItems={brokerItems}
         fixedTickerId={tradeTickerId ?? undefined}
         presetType={tradeSide}
+        selectedClass={filters.stockClass}
+        avgBookCost={
+          tradeTickerId
+            ? tickerMap.get(
+              [...tickerMap.values()].find((t) => t.id === tradeTickerId)?.symbol ?? '',
+            )?.avgBookCost??undefined
+          : undefined 
+        }
       />
     </StockShell>
   );

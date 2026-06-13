@@ -4,6 +4,9 @@ import {
   CardContent,
   Chip,
   IconButton,
+  ListItemIcon,
+  ListItemText,
+  Menu,
   MenuItem,
   Select,
   Stack,
@@ -20,7 +23,9 @@ import TimeAgo from '../shared/TimeAgo';
 import ThresholdMini from './ThresholdMini';
 import { THRESHOLD_COLORS } from '../../../constants/stockUI';
 import type { ThresholdKey } from '../../../constants/stockUI';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
+// import { More, MoreVert } from '@mui/icons-material';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
 
 function brokerQty(ticker: TickerLatestDTO, broker: BrokerId): number {
   const q = ticker.positionsByBroker?.[broker]?.quantityHolding;
@@ -78,6 +83,21 @@ export default function TickerCard(props: {
 
   const cardRef = useRef<HTMLDivElement | null>(null);
   const border = getBorderStatus(ticker);
+  // Action menu state
+  const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
+  const actionMenuOpen = Boolean(menuAnchorEl);
+  const handleMenuClick = (event: React.MouseEvent<HTMLElement>) => {
+    setMenuAnchorEl(event.currentTarget);
+  };
+  
+  const handleMenuClose = () => {
+    setMenuAnchorEl(null);
+  };
+
+  const handleAction = (actionFn: () => void) => {
+    actionFn();
+    handleMenuClose();
+  };
 
   const FALLBACK_BROKER: BrokerId = 'wealthsimple';
 
@@ -227,8 +247,54 @@ export default function TickerCard(props: {
             {ticker.symbol}
           </Typography>
 
+
           <Stack direction="row" spacing={0.1}>
-            {showZoom ? (
+          <Menu
+            anchorEl={menuAnchorEl}
+            open={actionMenuOpen}
+            onClose={handleMenuClose}
+            transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+            anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+          >
+            {showZoom && (
+              <MenuItem onClick={() => handleAction(() => onZoom(ticker.id, cardRef.current))}>
+                <ListItemIcon>
+                  <ZoomInIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText>Zoom</ListItemText>
+              </MenuItem>
+            )}
+            <MenuItem onClick={() => handleAction(() => onTrade(ticker.id, 'buy'))}>
+              <ListItemIcon>
+                <ShoppingCartIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText>Buy</ListItemText>
+            </MenuItem>
+            <MenuItem onClick={() => handleAction(() => onTrade(ticker.id, 'sell'))}>
+              <ListItemIcon>
+                <SellIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText>Sell</ListItemText>
+            </MenuItem>
+            <MenuItem onClick={() => handleAction(() => onToggleSilence(ticker.id))}>
+              <ListItemIcon>
+                {silenced ? (
+                  <NotificationsOffIcon fontSize="small" />
+                ) : (
+                  <NotificationsActiveIcon fontSize="small" />
+                )}
+              </ListItemIcon>
+              <ListItemText>{silenced ? 'Unsilence' : 'Silence'}</ListItemText>
+            </MenuItem>
+          </Menu>
+             <IconButton
+              size="small"
+              onClick={handleMenuClick}
+              aria-label="Actions"
+            >
+              <MoreVertIcon fontSize="small" />
+            </IconButton>
+            {/*{showZoom ? (
               <IconButton
                 size="small"
                 onClick={() => onZoom(ticker.id, cardRef.current)}
@@ -268,7 +334,7 @@ export default function TickerCard(props: {
               ) : (
                 <NotificationsActiveIcon fontSize="small" />
               )}
-            </IconButton>
+            </IconButton> */}
           </Stack>
         </Stack>
 
