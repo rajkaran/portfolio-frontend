@@ -10,6 +10,7 @@ export function ChartGrid(props: {
   getSeries: (symbol: string) => { t: number[]; v: number[] } | undefined;
   subscribeLatest: (symbol: string, cb: (p: { price: number; time: string }) => void) => () => void;
   subscribeSeries: (symbol: string, cb: () => void) => () => void;
+  topBarOpen:boolean;
 }) {
   const gridSpec = (() => {
     if (props.perTab === 1) return { rows: 1, cols: 1 };
@@ -22,7 +23,8 @@ export function ChartGrid(props: {
   return (
     <Box
       sx={{
-        height: 'calc(100vh - 320px)',
+        height: props.topBarOpen?'calc(100vh - 320px)':'calc(100vh - 80px)',
+        // height: 'calc(100vh - 320px)',
         minHeight: 360,
         display: 'grid',
         gap: 2,

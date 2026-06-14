@@ -78,6 +78,8 @@ export default function ChartWall() {
   const [loadedTz, setLoadedTz] = useState('');
   const [openTick, setOpenTick] = useState(0);
 
+  const [topBarOpen, setTopBarOpen] = useState(true);
+
   const [wsConnected, setWsConnected] = useState(false);
 
   const keyValueIds = useMemo(() => ['stockClass', 'bucket'], []);
@@ -455,6 +457,7 @@ export default function ChartWall() {
             </Box>
           </Box>
         }
+        onOpenChange={setTopBarOpen}
       >
         <ChartWallControls
           market={market}
@@ -495,6 +498,7 @@ export default function ChartWall() {
         getSeries={getSeries}
         subscribeLatest={subscribeLatest}
         subscribeSeries={subscribeSeries}
+        topBarOpen={topBarOpen}
       />
     </StockShell>
   );
