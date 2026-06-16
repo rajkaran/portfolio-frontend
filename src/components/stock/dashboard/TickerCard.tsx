@@ -24,16 +24,15 @@ import ThresholdMini from './ThresholdMini';
 import { THRESHOLD_COLORS } from '../../../constants/stockUI';
 import type { ThresholdKey } from '../../../constants/stockUI';
 import { useRef, useState } from 'react';
-// import { More, MoreVert } from '@mui/icons-material';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 
 function brokerQty(ticker: TickerLatestDTO, broker: BrokerId): number {
-  const q = ticker.positionsByBroker?.[broker]?.quantityHolding;
+  const q = ticker.positionsByBrokerAccount?.[broker]?.quantityHolding;
   return typeof q === 'number' ? q : 0;
 }
 
 function brokerAvg(ticker: TickerLatestDTO, broker: BrokerId): number | null {
-  const a = ticker.positionsByBroker?.[broker]?.avgBookCost;
+  const a = ticker.positionsByBrokerAccount?.[broker]?.avgBookCost;
   return typeof a === 'number' ? a : null;
 }
 
@@ -99,9 +98,7 @@ export default function TickerCard(props: {
     handleMenuClose();
   };
 
-  const FALLBACK_BROKER: BrokerId = 'wealthsimple';
-
-  const eligibleBrokers = (Object.keys(ticker.positionsByBroker ?? {}) as BrokerId[]).filter(
+  const eligibleBrokers = Object.keys(ticker.positionsByBrokerAccount ?? {}).filter(
     (b) => brokerQty(ticker, b) > 0,
   );
   const showDropdown = eligibleBrokers.length >= 2;
@@ -111,7 +108,7 @@ export default function TickerCard(props: {
       ? ticker.uiSelectedBroker
       : undefined) ??
     eligibleBrokers[0] ??
-    FALLBACK_BROKER;
+    '';
 
   const fmt = (avg: number | null, qty: number) =>
     avg != null ? `Avg ${avg.toFixed(2)} (${qty})` : `Qty (${qty})`;
@@ -174,7 +171,7 @@ export default function TickerCard(props: {
           PaperProps: { sx: { mt: 0.5 } },
         }}
       >
-        {eligibleBrokers.map((b: BrokerId) => {
+        {eligibleBrokers.map((b) => {
           const avg = brokerAvg(ticker, b);
           const qty = brokerQty(ticker, b);
           return (
@@ -294,47 +291,6 @@ export default function TickerCard(props: {
             >
               <MoreVertIcon fontSize="small" />
             </IconButton>
-            {/*{showZoom ? (
-              <IconButton
-                size="small"
-                onClick={() => onZoom(ticker.id, cardRef.current)}
-                title="Zoom"
-                aria-label="Zoom"
-              >
-                <ZoomInIcon fontSize="small" />
-              </IconButton>
-            ) : null}
-
-            <IconButton
-              size="small"
-              onClick={() => onTrade(ticker.id, 'buy')}
-              title="Buy"
-              aria-label="Buy"
-            >
-              <ShoppingCartIcon fontSize="small" />
-            </IconButton>
-
-            <IconButton
-              size="small"
-              onClick={() => onTrade(ticker.id, 'sell')}
-              title="Sell"
-              aria-label="Sell"
-            >
-              <SellIcon fontSize="small" />
-            </IconButton>
-
-            <IconButton
-              size="small"
-              onClick={() => onToggleSilence(ticker.id)}
-              title={silenced ? 'Unsilence buy signal' : 'Silence buy signal'}
-              aria-label={silenced ? 'Unsilence' : 'Silence'}
-            >
-              {silenced ? (
-                <NotificationsOffIcon fontSize="small" />
-              ) : (
-                <NotificationsActiveIcon fontSize="small" />
-              )}
-            </IconButton> */}
           </Stack>
         </Stack>
 

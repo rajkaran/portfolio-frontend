@@ -49,7 +49,7 @@ export type TickerLatestDTO = {
   thresholdOrange: number;
   thresholdRed: number;
 
-  positionsByBroker?: Partial<Record<string, BrokerPositionSnapshotDTO>>;
+  positionsByBrokerAccount?: Partial<Record<string, BrokerPositionSnapshotDTO>>;
 
   // UI-only (stored in state, not backend)
   uiSelectedBroker?: string;
@@ -102,7 +102,7 @@ export const defaultStockFilters: StockFilters = {
 export type FilterState = {
   market: string;
   stockClass: string;
-  bucket: string;
+  buckets: string[];
 };
 
 export type FormState = {

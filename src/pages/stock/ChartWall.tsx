@@ -23,7 +23,7 @@ import {
   getMarketItemsFromExchanges,
   getStockClassItems,
 } from '../../utils/stock/prepareDropdownOptions';
-import CollapsibleTopBar from '../../components/stock/layout/CollapsibleTopBar';
+import CollapsibleTopBar from '../../layouts/stock/CollapsibleTopBar';
 
 function chunk<T>(arr: T[], size: number): T[][] {
   if (size <= 0) return [arr];

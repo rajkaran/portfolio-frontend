@@ -8,7 +8,7 @@ import type {
 } from '../../types/stock/ticker.types';
 import { loopbackApi } from './loopback-api';
 
-export async function listTickers(params?: { market?: string; stockClass?: string; bucket?: string }) {
+export async function listTickers(params?: { market?: string; stockClass?: string; buckets?: string[] }) {
   const and: Array<Record<string, unknown>> = [];
 
   if (params?.market) and.push({ market: params.market });
@@ -18,8 +18,8 @@ export async function listTickers(params?: { market?: string; stockClass?: strin
     and.push({ stockClasses: { inq: [params.stockClass] } });
   }
 
-  if(params?.bucket){
-    and.push({ bucket: params.bucket });
+  if(params?.buckets){
+    and.push({ bucket: {inq: params.buckets} });
   }
 
   and.push({ isActive: true });
@@ -33,7 +33,6 @@ export async function listTickers(params?: { market?: string; stockClass?: strin
       companyName: true,
       market: true,
       stockClasses: true,
-      industry: true,
       industryTags: true,
       bucket: true,
     },
@@ -71,7 +70,6 @@ export async function listTickerLatest(
       companyName: true,
       market: true,
       stockClasses: true,
-      // industry: true,
       industryTags: true,
       bucket: true,
 
@@ -82,7 +80,7 @@ export async function listTickerLatest(
       updateDatetime: true,
       tradeDatetime: true,
 
-      positionsByBroker: true,
+      positionsByBrokerAccount: true,
 
       thresholdGreen: true,
       thresholdCyan: true,
@@ -119,13 +117,4 @@ export async function patchTickerThresholds(tickerId: string, patch: ThresholdPa
 
 export async function deleteTicker(id: string) {
   await loopbackApi.delete(`/tickers/${id}`);
-}
-
-export async function getIndustryTags(): Promise<string[]>{
-  const res = await loopbackApi.get<string[]>('/industry-tags');
-  return res.data;
-}
-
-export async function createIndustryTag(name: string): Promise<void>{
-  await loopbackApi.post('/industry-tags', { name });
 }

@@ -12,7 +12,6 @@ import {
   Tooltip,
   Typography,
   TablePagination,
-  Collapse,
 } from '@mui/material';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
@@ -51,7 +50,6 @@ export default function Trade() {
   const [totalCount, setTotalCount] = useState(0);
 
   const [loading, setLoading] = useState(false);
-  const [showFilters, setShowFilters] = useState(true);
 
   // filters
   const [filterSymbols, setFilterSymbols] = useState<string[]>([]);
@@ -309,17 +307,6 @@ export default function Trade() {
       </Stack>
 
       {/* Filters */}
-      <Box>
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
-          <Button
-            size="small" 
-            onClick={() => setShowFilters(!showFilters)}
-            sx={{ textTransform: 'none' }}
-            >
-            {showFilters ? 'Hide filters' : 'Show filters'}
-          </Button>
-        </Box>
-        <Collapse in={showFilters}>
           <Box
             sx={{
               bgcolor: 'rgba(255,255,255,0.06)',
@@ -362,8 +349,6 @@ export default function Trade() {
               label="Broker"
               />
           </Box>
-        </Collapse>
-      </Box>
 
       {/* Grid "table" */}
       <Box sx={{ bgcolor: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden' }}>

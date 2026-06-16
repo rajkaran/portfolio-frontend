@@ -18,16 +18,15 @@ export function IndustryTagsInput({
       options={allTags}
       value={value}
       onChange={(_, newValue) => {
-        // newValue can contain strings or "Add X" objects — normalize to strings
-        const normalized = newValue.map((v) =>
-          typeof v === 'string' ? v.trim() : v,
-        ).filter(Boolean);
+        const normalized = newValue
+          .map((v) =>typeof v === 'string' ? v.trim() : v,)
+          .filter(Boolean);
         onChange([...new Set(normalized)]);
       }}
       filterOptions={(options, params) => {
-        const filtered = filter(options, params);
         const input = params.inputValue.trim();
-        if (input && !options.includes(input)) {
+        const filtered = filter(options, params);
+        if (input && !options.some((o) => o.toLowerCase() === input.toLowerCase())) {
           filtered.push(input);
         }
         return filtered;

@@ -34,7 +34,7 @@ export function getBucketItems(keyValuePairs: KeyValueMap | undefined): Dropdown
 }
 
 export function formatBrokerAccountLabel(account: BrokerAccountDTO): string {
-  // if(account.alias?.trim()) return account.alias.trim();
+  if(account.alias?.trim()) return account.alias.trim();
   const broker = account.broker?.trim();
   const name = account.name?.trim();
 
@@ -68,11 +68,6 @@ export function getBrokerLabels(
 
   for (const account of brokerAccounts) {
     labels[account.id] = formatBrokerAccountLabel(account);
-
-    const key = account.broker.toLowerCase().replace(/\s+/g, '');;
-    if(!labels[key]) {
-      labels[key] = account.alias ?? account.broker;
-    }
   }
 
   return labels;
@@ -134,7 +129,5 @@ export function getDefaultBucketValues(items: DropdownItem[]): string[] {
 }
 
 export function getDefaultBrokerAccountId(items: DropdownItem[]): string {
-  // return getPreferredDropdownValueByLabel(items, 'WS NR');
-  // return getPreferredDropdownValue(items[0]?.value ?? '');
   return items[0]?.value ?? ''
 }

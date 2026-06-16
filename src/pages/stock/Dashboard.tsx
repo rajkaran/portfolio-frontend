@@ -27,8 +27,6 @@ import { derivePositionFields, pickDefaultBroker } from '../../utils/stock/Dashb
 import { compareBySort, isFavorable } from '../../utils/stock/tickerSorting';
 import { enableSound, playChime } from '../../utils/stock/chimes';
 import { useKeyValuePairs } from '../../hooks/stock/useKeyValuePairs';
-// import ExpandLessIcon from '@mui/icons-material/ExpandLess';
-// import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import {
   getBrokerItems,
   getBrokerLabels,
@@ -39,7 +37,7 @@ import {
 } from '../../utils/stock/prepareDropdownOptions';
 import { useStockExchanges } from '../../hooks/stock/useStockExchanges';
 import { useBrokerAccounts } from '../../hooks/stock/useBrokerAccounts';
-import CollapsibleTopBar from '../../components/stock/layout/CollapsibleTopBar';
+import CollapsibleTopBar from '../../layouts/stock/CollapsibleTopBar';
 
 const toIso = (v: string | Date | null | undefined) =>
   !v ? null : typeof v === 'string' ? new Date(v).toISOString() : v.toISOString();
@@ -59,7 +57,6 @@ export default function Dashboard() {
   const [zoomAnchorEl, setZoomAnchorEl] = useState<HTMLElement | null>(null);
   const [silencedById, setSilencedById] = useState<Record<string, boolean>>({});
   const [soundEnabled, setSoundEnabled] = useState(false);
-  // const [showFilters, setShowFilters] = useState(false);
 
   // snapshot state
   const [tickerMap, setTickerMap] = useState<Map<string, TickerLatestDTO>>(new Map());
@@ -132,12 +129,12 @@ export default function Dashboard() {
       for (const raw of rows as TickerLatestDTO[]) {
         const normalized: TickerLatestDTO = {
           ...raw,
-          positionsByBroker: raw.positionsByBroker ?? {},
+          positionsByBrokerAccount: raw.positionsByBrokerAccount ?? {},
           updateDatetime: toIso(raw.updateDatetime),
           tradeDatetime: toIso(raw.tradeDatetime),
         };
 
-        const selected = normalized.uiSelectedBroker ?? pickDefaultBroker(normalized);
+        const selected = normalized.uiSelectedBroker ?? pickDefaultBroker(normalized, brokerAccounts ?? []);
         const derived = derivePositionFields(normalized, selected);
 
         map.set(normalized.symbol, {
@@ -177,7 +174,7 @@ export default function Dashboard() {
           };
 
           // recompute totalReturn based on selected broker snapshot (derived fields)
-          const selected = updated.uiSelectedBroker ?? pickDefaultBroker(updated);
+          const selected = updated.uiSelectedBroker ?? pickDefaultBroker(updated, brokerAccounts ?? []);
           updated.uiSelectedBroker = selected;
           Object.assign(updated, derivePositionFields(updated, selected));
 
@@ -263,7 +260,7 @@ export default function Dashboard() {
           const next = new Map(prev);
 
           const broker = m.patch.brokerAccountId;
-          const prevPos = existing.positionsByBroker ?? {};
+          const prevPos = existing.positionsByBrokerAccount ?? {};
           const prevSnap = prevPos[broker] ?? {};
 
           // apply patch
@@ -279,14 +276,14 @@ export default function Dashboard() {
 
           const updated: TickerLatestDTO = {
             ...existing,
-            positionsByBroker: {
+            positionsByBrokerAccount: {
               ...prevPos,
               [broker]: nextSnap,
             },
           };
 
           // keep selection stable, but ensure it exists
-          const selected = updated.uiSelectedBroker ?? pickDefaultBroker(updated);
+          const selected = updated.uiSelectedBroker ?? pickDefaultBroker(updated, brokerAccounts ?? []);
           updated.uiSelectedBroker = selected;
 
           // If selected broker changed in the event OR selection was missing, recompute derived fields.
@@ -442,6 +439,9 @@ export default function Dashboard() {
     }
   };
 
+  console.log(brokerAccounts);
+  
+
   return (
     <StockShell
       right={({ closeRight }) => (
@@ -504,12 +504,10 @@ export default function Dashboard() {
         fixedTickerId={tradeTickerId ?? undefined}
         presetType={tradeSide}
         selectedClass={filters.stockClass}
-        avgBookCost={
+        positionsByBrokerAccount={
           tradeTickerId
-            ? tickerMap.get(
-              [...tickerMap.values()].find((t) => t.id === tradeTickerId)?.symbol ?? '',
-            )?.avgBookCost??undefined
-          : undefined 
+            ? [...tickerMap.values()].find((t) => t.id === tradeTickerId)?.positionsByBrokerAccount
+            : undefined
         }
       />
     </StockShell>

@@ -12,7 +12,7 @@ import {
   Select,
   MenuItem,
 } from '@mui/material';
-import type { TickerOption } from '../../../types/stock/ticker.types';
+import type { BrokerPositionSnapshotDTO, TickerOption } from '../../../types/stock/ticker.types';
 import type {
   CreateTradeDTO,
   TradeDialogMode,
@@ -66,13 +66,19 @@ function nowIso() {
   return new Date().toISOString();
 }
 
+function getClassFlags(selectedClass?: string){
+  return {
+    isTrade: selectedClass === 'trade',
+    isDividendOrLongTerm: selectedClass === 'dividend' || selectedClass === 'longTerm',
+  }
+}
+
 function resetForm(
   defaultBrokerAccountId: string,
   preset?: { tickerId?: string; type?: TradeType },
-  selectecClass? :string,
+  selectedClass? :string,
 ): FormState {
-  const isTrade = selectecClass === 'trade';
-  const isDividendOrLongTerm = selectecClass === 'dividend' || selectecClass === 'longTerm';
+  const {isTrade, isDividendOrLongTerm} = getClassFlags(selectedClass);
   return {
     symbol: '',
     tickerId: preset?.tickerId ?? '',
@@ -105,7 +111,7 @@ export function CreateTradeDialog(props: {
 
   onSaved?: () => void | Promise<void>;
   selectedClass?: string;
-  avgBookCost?: number;
+  positionsByBrokerAccount?: Partial<Record<string, BrokerPositionSnapshotDTO>>;
 }) {
   const {
     open,
@@ -117,7 +123,7 @@ export function CreateTradeDialog(props: {
     presetType,
     editingTradeId,
     initialValues,
-    avgBookCost,
+    positionsByBrokerAccount,
     selectedClass
   } = props;
 
@@ -134,6 +140,8 @@ export function CreateTradeDialog(props: {
   const [tradeDtLocal, setTradeDtLocal] = useState<string>(() =>
     isoToLocalInput(form.tradeDatetimeIso),
   );
+
+  const avgBookCost = positionsByBrokerAccount?.[form.brokerAccountId]?.avgBookCost;
 
   // refs for focus behavior
   const tickerInputRef = useRef<HTMLInputElement | null>(null);
@@ -224,7 +232,7 @@ export function CreateTradeDialog(props: {
     if (form.profit !== next) {
       setForm((p) => ({ ...p, profit: next }));
     }
-  }, [open, form.tradeType, form.rate, form.quantity, form.brokerageFee, profitTouched, avgBookCost]);
+  }, [open, form.tradeType, form.rate, form.quantity, form.brokerageFee, form.brokerAccountId, profitTouched, avgBookCost]);
 
   // When closing: clear transient state (including fetched options in parent, if any)
   const handleClose = () => {
@@ -247,8 +255,8 @@ export function CreateTradeDialog(props: {
     if (!Number.isFinite(totalAmountNum) || totalAmountNum <= 0) return;
     if (form.profit.trim() && !Number.isFinite(profitNum!)) return;
 
-    const isTrade = props.selectedClass === 'trade';
-    const isDividendOrLongTerm = props.selectedClass === 'dividend' || props.selectedClass === 'longTerm';
+    const {isTrade, isDividendOrLongTerm} = getClassFlags(props.selectedClass);
+
     if (isTrade && !form.purpose) return;
     if (isTrade && !form.reason) return;
     if (isDividendOrLongTerm && !form.purpose) return;
@@ -290,7 +298,6 @@ export function CreateTradeDialog(props: {
 
   // Render ticker selector:
   const fixed = (mode === 'quick' && fixedTickerId)  || !!editingTradeId;
-  // const fixed = (mode === 'quick' && fixedTickerId);
   const tickerValue = tickers.find((t) => t.id === form.tickerId) ?? null;
 
   const tickerField = fixed ? (
@@ -344,7 +351,6 @@ export function CreateTradeDialog(props: {
             if (v.trim() === '') setProfitTouched(false);
           }
         }
-        helperText={avgBookCost != null && !profitTouched? 'Auto-calculted':undefined}
         inputProps={{ inputMode: 'decimal' }}
       />
     ) : null;
