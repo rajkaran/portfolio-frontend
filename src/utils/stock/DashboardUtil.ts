@@ -1,37 +1,39 @@
+import { LT_PRIORITY, TRADE_PRIORITY } from '../../constants/brokerAccountPriority';
 import type { BrokerAccountDTO } from '../../types/stock/broker-account.types';
-import type { BrokerId, TickerLatestDTO } from '../../types/stock/ticker.types';
+import type { TickerLatestDTO } from '../../types/stock/ticker.types';
 
-const BROKER_PRIORITY = ['Wealthsimple', 'Questrade', 'TD Canada Trust', 'Motilal Oswal'];
-const ACCOUNT_TYPE_PRIORITY = ['Non-registered', 'Cash', 'TFSA', 'RRSP', 'NRO', 'NRE'];
+function getBrokerPriority(account: BrokerAccountDTO, stockClass: string):number{
+  const list = stockClass === 'TRADE'? TRADE_PRIORITY : LT_PRIORITY;
+  const idx = list.findIndex((p)=>p.broker === account.broker && p.name === account.name);
+  return idx === -1 ? 999 : idx;
+}
 
-function getBrokerQty(t: TickerLatestDTO, b: BrokerId): number {
+function getBrokerQty(t: TickerLatestDTO, b: string): number {
   const q = t.positionsByBrokerAccount?.[b]?.quantityHolding;
   return typeof q === 'number' ? q : 0;
 }
 
-function accountPriority(account: BrokerAccountDTO): number {
-  const brokerRank = BROKER_PRIORITY.indexOf(account.broker);
-  const typeRank = ACCOUNT_TYPE_PRIORITY.indexOf(account.name);
-  return (brokerRank === -1 ? 99 : brokerRank) * 10 + (typeRank === -1 ? 9 : typeRank);
-}
-
-export function pickDefaultBroker(t: TickerLatestDTO, accounts: BrokerAccountDTO[]): string {
+export function pickDefaultBroker(
+  t: TickerLatestDTO, 
+  accounts: BrokerAccountDTO[],
+  stockClass: string = 'trade',
+): string {
   const posKeys = Object.keys(t.positionsByBrokerAccount ?? {});
 
   const withQty = accounts
     .filter((a)=>posKeys.includes(a.id) && getBrokerQty(t, a.id) > 0)
-    .sort((a,b)=>accountPriority(a) - accountPriority(b));
+    .sort((a,b)=>getBrokerPriority(a, stockClass) - getBrokerPriority(b, stockClass));
   if(withQty.length > 0) return withQty[0].id;
   const sorted = accounts
     .filter((a) => posKeys.includes(a.id))
-    .sort((a, b) => accountPriority(a) - accountPriority(b));
+    .sort((a, b) => getBrokerPriority(a, stockClass) - getBrokerPriority(b, stockClass));
 
   if (sorted.length) return sorted[0].id;
 
   return posKeys[0] ?? '';
 }
 
-export function derivePositionFields(t: TickerLatestDTO, broker: BrokerId): Pick<TickerLatestDTO, 'avgBookCost'|'quantityHolding'|'totalReturn'> {
+export function derivePositionFields(t: TickerLatestDTO, broker: string): Pick<TickerLatestDTO, 'avgBookCost'|'quantityHolding'|'totalReturn'> {
   const snap = t.positionsByBrokerAccount?.[broker];
   const avg = typeof snap?.avgBookCost === 'number' ? snap.avgBookCost : null;
   const qty = typeof snap?.quantityHolding === 'number' ? snap.quantityHolding : null;

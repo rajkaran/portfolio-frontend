@@ -25,6 +25,8 @@ export type BrokerPositionSnapshotDTO = {
   anchorTradeDatetime?: string | null;
   isPositionDirty?: boolean | null;
   dirtySinceTradeDatetime?: string | null;
+  broker?: string|null;
+  name?: string|null;
 };
 
 export type TickerLatestDTO = {

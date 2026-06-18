@@ -76,6 +76,8 @@ export default function Dashboard() {
   // per symbol “armed state” (true means we’ve already rung for current side)
   const chimeStateRef = useRef<Record<string, Partial<Record<ChimeKey, boolean>>>>({});
 
+  const stockClassRef = useRef<string>(filters.stockClass);
+
   // TODO: add a page to record dividends.
   // TODO: create dividend tiles and notifications through emails
   // TODO: complete favorability bar
@@ -97,7 +99,7 @@ export default function Dashboard() {
     [tickers],
   );
 
-  const brokerItems = useMemo(() => getBrokerItems(brokerAccounts, filters.stockClass), [brokerAccounts, filters.stockClass]);
+  const brokerItems = useMemo(() => getBrokerItems(brokerAccounts, filters.stockClass, true), [brokerAccounts, filters.stockClass]);
   const brokerLabels = useMemo(() => getBrokerLabels(brokerAccounts), [brokerAccounts]);
   const marketItems = useMemo(() => getMarketItemsFromExchanges(exchanges), [exchanges]);
   const classItems = useMemo(() => getStockClassItems(keyValuePairs), [keyValuePairs]);
@@ -134,7 +136,7 @@ export default function Dashboard() {
           tradeDatetime: toIso(raw.tradeDatetime),
         };
 
-        const selected = normalized.uiSelectedBroker ?? pickDefaultBroker(normalized, brokerAccounts ?? []);
+        const selected = normalized.uiSelectedBroker ?? pickDefaultBroker(normalized, brokerAccounts ?? [], filters.stockClass);
         const derived = derivePositionFields(normalized, selected);
 
         map.set(normalized.symbol, {
@@ -174,7 +176,7 @@ export default function Dashboard() {
           };
 
           // recompute totalReturn based on selected broker snapshot (derived fields)
-          const selected = updated.uiSelectedBroker ?? pickDefaultBroker(updated, brokerAccounts ?? []);
+          const selected = updated.uiSelectedBroker ?? pickDefaultBroker(updated, brokerAccounts ?? [], stockClassRef.current);
           updated.uiSelectedBroker = selected;
           Object.assign(updated, derivePositionFields(updated, selected));
 
@@ -283,7 +285,7 @@ export default function Dashboard() {
           };
 
           // keep selection stable, but ensure it exists
-          const selected = updated.uiSelectedBroker ?? pickDefaultBroker(updated, brokerAccounts ?? []);
+          const selected = updated.uiSelectedBroker ?? pickDefaultBroker(updated, brokerAccounts ?? [], stockClassRef.current);
           updated.uiSelectedBroker = selected;
 
           // If selected broker changed in the event OR selection was missing, recompute derived fields.
@@ -317,6 +319,11 @@ export default function Dashboard() {
   useEffect(() => {
     localStorage.setItem('silencedById', JSON.stringify(silencedById));
   }, [silencedById]);
+
+  //Stockclassref sync
+  useEffect(() => {
+    stockClassRef.current = filters.stockClass;
+  }, [filters.stockClass]);
 
   const toggleSound = async () => {
     if (soundEnabled) {
@@ -369,7 +376,7 @@ export default function Dashboard() {
     setZoomAnchorEl(null);
   };
 
-  const onSelectBroker = useCallback((tickerSymbol: string, broker: string) => {
+  const onSelectBroker = useCallback((tickerSymbol: string, brokerAccountId: string) => {
     setTickerMap((prev) => {
       const existing = prev.get(tickerSymbol);
       if (!existing) return prev;
@@ -377,8 +384,8 @@ export default function Dashboard() {
       const next = new Map(prev);
       const updated: TickerLatestDTO = {
         ...existing,
-        uiSelectedBroker: broker,
-        ...derivePositionFields(existing, broker),
+        uiSelectedBroker: brokerAccountId,
+        ...derivePositionFields(existing, brokerAccountId),
       };
 
       next.set(tickerSymbol, updated);
@@ -438,9 +445,6 @@ export default function Dashboard() {
       console.error(e);
     }
   };
-
-  console.log(brokerAccounts);
-  
 
   return (
     <StockShell

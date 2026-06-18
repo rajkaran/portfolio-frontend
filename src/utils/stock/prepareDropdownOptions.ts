@@ -1,3 +1,4 @@
+import { LT_PRIORITY, TRADE_PRIORITY } from '../../constants/brokerAccountPriority';
 import type { BrokerAccountDTO } from '../../types/stock/broker-account.types';
 import type { KeyValueMap } from '../../types/stock/key-value-pairs.types';
 import type { StockExchangeDTO } from '../../types/stock/stock-exchange.types';
@@ -33,8 +34,8 @@ export function getBucketItems(keyValuePairs: KeyValueMap | undefined): Dropdown
   return getKeyValueDropdownItems(keyValuePairs, 'bucket');
 }
 
-export function formatBrokerAccountLabel(account: BrokerAccountDTO): string {
-  if(account.alias?.trim()) return account.alias.trim();
+export function formatBrokerAccountLabel(account: BrokerAccountDTO, fullName: Boolean): string {
+  if(account.alias?.trim() && !fullName) return account.alias.trim();
   const broker = account.broker?.trim();
   const name = account.name?.trim();
 
@@ -42,32 +43,32 @@ export function formatBrokerAccountLabel(account: BrokerAccountDTO): string {
   return broker || name || account.id;
 }
 
-export function getBrokerItems(brokerAccounts: BrokerAccountDTO[] | undefined, selectedClass?: string): DropdownItem[] {
+export function getBrokerItems(brokerAccounts: BrokerAccountDTO[] | undefined, selectedClass?: string, useFullName=false): DropdownItem[] {
   if (!brokerAccounts?.length) return [];
 
-  const sorted = selectedClass
-    ? [...brokerAccounts].sort((a, b) => {
-        const aMatch = a.stockClass === selectedClass ? 0 : 1;
-        const bMatch = b.stockClass === selectedClass ? 0 : 1;
-        return aMatch - bMatch;
-      })
-    : brokerAccounts;
+  const list = selectedClass === 'trade' || !selectedClass ? TRADE_PRIORITY : LT_PRIORITY;
+
+  const sorted = [...brokerAccounts].sort((a, b) => {
+    const aIdx = list.findIndex((p) => p.broker === a.broker && a.name.includes(p.name));
+    const bIdx = list.findIndex((p) => p.broker === b.broker && b.name.includes(p.name));
+    return (aIdx === -1 ? 99: aIdx) - (bIdx === -1 ? 99: bIdx);
+  });
 
   return sorted.map((account) => ({
     value: account.id,
-    label: formatBrokerAccountLabel(account),
+    label:formatBrokerAccountLabel(account, useFullName),
   }));
 }
 
 export function getBrokerLabels(
-  brokerAccounts: BrokerAccountDTO[] | undefined,
+  brokerAccounts: BrokerAccountDTO[] | undefined, useFullName=false
 ): Record<string, string> {
   if (!brokerAccounts?.length) return {};
 
   const labels: Record<string, string> = {};
 
   for (const account of brokerAccounts) {
-    labels[account.id] = formatBrokerAccountLabel(account);
+    labels[account.id] = formatBrokerAccountLabel(account, useFullName);
   }
 
   return labels;

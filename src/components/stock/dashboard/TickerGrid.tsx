@@ -1,5 +1,5 @@
 import { Box } from '@mui/material';
-import type { BrokerId, TickerLatestDTO } from '../../../types/stock/ticker.types';
+import type { TickerLatestDTO } from '../../../types/stock/ticker.types';
 import TickerCard from './TickerCard';
 import type { ThresholdKey } from '../../../constants/stockUI';
 
@@ -18,7 +18,7 @@ export default function TickerGrid({
   onZoom: (id: string, anchorEl: HTMLElement | null) => void;
   onTrade: (id: string, side: 'buy' | 'sell') => void;
   onChangeThreshold: (tickerId: string, key: ThresholdKey, value: number) => void;
-  onSelectBroker: (symbol: string, broker: BrokerId) => void;
+  onSelectBroker: (symbol: string, brokerAccountId: string) => void;
   silencedById: Record<string, boolean>;
   onToggleSilence: (tickerId: string) => void;
 }) {

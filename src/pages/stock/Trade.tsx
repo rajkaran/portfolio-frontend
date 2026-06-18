@@ -74,8 +74,8 @@ export default function Trade() {
   const rowsReqIdRef = useRef(0);
   const countReqIdRef = useRef(0);
 
-  const brokerItems = useMemo(() => getBrokerItems(brokerAccounts), [brokerAccounts]);
-  const brokerLabels = useMemo(() => getBrokerLabels(brokerAccounts), [brokerAccounts]);
+  const brokerItems = useMemo(() => getBrokerItems(brokerAccounts, undefined,  true), [brokerAccounts]);
+  const brokerLabels = useMemo(() => getBrokerLabels(brokerAccounts, true), [brokerAccounts]);
 
   const defaultBrokerAccountId = useMemo(
     () => getDefaultBrokerAccountId(brokerItems),

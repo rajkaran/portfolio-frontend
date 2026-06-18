@@ -96,8 +96,8 @@ export default function Ticker() {
   },[])
 
   useEffect(() => {
-    if (!marketItems.length || !classItems.length) return;
-    if (filters.market && filters.stockClass) return;
+    if (!marketItems.length || !classItems.length || !bucketItems.length) return;
+    if (filters.market && filters.stockClass && filters.buckets) return;
 
     setFilters((prev) => ({
       ...prev,
@@ -105,7 +105,7 @@ export default function Ticker() {
       stockClass: prev.stockClass || getDefaultStockClassValue(classItems),
       buckets: prev.buckets.length ? prev.buckets : getDefaultBucketValues(bucketItems),
     }));
-  }, [marketItems, classItems, filters.market, filters.stockClass]);
+  }, [marketItems, classItems, bucketItems, filters.market, filters.stockClass, filters.buckets]);
 
   
 

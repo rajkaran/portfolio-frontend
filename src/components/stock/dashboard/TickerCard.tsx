@@ -18,7 +18,7 @@ import SellIcon from '@mui/icons-material/Sell';
 import NotificationsOffIcon from '@mui/icons-material/NotificationsOff';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 
-import type { BrokerId, TickerLatestDTO } from '../../../types/stock/ticker.types';
+import type {TickerLatestDTO } from '../../../types/stock/ticker.types';
 import TimeAgo from '../shared/TimeAgo';
 import ThresholdMini from './ThresholdMini';
 import { THRESHOLD_COLORS } from '../../../constants/stockUI';
@@ -26,13 +26,13 @@ import type { ThresholdKey } from '../../../constants/stockUI';
 import { useRef, useState } from 'react';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 
-function brokerQty(ticker: TickerLatestDTO, broker: BrokerId): number {
-  const q = ticker.positionsByBrokerAccount?.[broker]?.quantityHolding;
+function brokerQty(ticker: TickerLatestDTO, brokerAccountId: string): number {
+  const q = ticker.positionsByBrokerAccount?.[brokerAccountId]?.quantityHolding;
   return typeof q === 'number' ? q : 0;
 }
 
-function brokerAvg(ticker: TickerLatestDTO, broker: BrokerId): number | null {
-  const a = ticker.positionsByBrokerAccount?.[broker]?.avgBookCost;
+function brokerAvg(ticker: TickerLatestDTO, brokerAccountId: string): number | null {
+  const a = ticker.positionsByBrokerAccount?.[brokerAccountId]?.avgBookCost;
   return typeof a === 'number' ? a : null;
 }
 
@@ -59,11 +59,11 @@ function getBorderStatus(ticker: TickerLatestDTO): {
 
 export default function TickerCard(props: {
   ticker: TickerLatestDTO;
-  brokerLabels: Record<BrokerId, string>;
+  brokerLabels: Record<string, string>;
   onZoom: (id: string, anchorEl: HTMLElement | null) => void;
   onTrade: (id: string, side: 'buy' | 'sell') => void;
   onChangeThreshold: (tickerId: string, key: ThresholdKey, value: number) => void;
-  onSelectBroker: (symbol: string, broker: BrokerId) => void;
+  onSelectBroker: (symbol: string, broker: string) => void;
   silenced: boolean;
   onToggleSilence: (tickerId: string) => void;
   showZoom?: boolean;
@@ -103,7 +103,7 @@ export default function TickerCard(props: {
   );
   const showDropdown = eligibleBrokers.length >= 2;
 
-  const displayBroker: BrokerId =
+  const displayBroker: string =
     (ticker.uiSelectedBroker && eligibleBrokers.includes(ticker.uiSelectedBroker)
       ? ticker.uiSelectedBroker
       : undefined) ??
@@ -122,7 +122,7 @@ export default function TickerCard(props: {
         variant="standard"
         disableUnderline
         value={displayBroker}
-        onChange={(e) => onSelectBroker(ticker.symbol, e.target.value as BrokerId)}
+        onChange={(e) => onSelectBroker(ticker.symbol, e.target.value as string)}
         sx={{
           // match the static caption look
           fontSize: CAPTION_FONT,
@@ -162,7 +162,7 @@ export default function TickerCard(props: {
           },
         }}
         renderValue={(value) => {
-          const b = value as BrokerId;
+          const b = value as string;
           const avg = brokerAvg(ticker, b);
           const qty = brokerQty(ticker, b);
           return fmt(avg, qty); // "Avg 202.71 (10)"
