@@ -66,19 +66,19 @@ function nowIso() {
   return new Date().toISOString();
 }
 
-function getClassFlags(selectedClass?: string){
+function getClassFlags(selectedClass?: string) {
   return {
     isTrade: selectedClass === 'trade',
     isDividendOrLongTerm: selectedClass === 'dividend' || selectedClass === 'longTerm',
-  }
+  };
 }
 
 function resetForm(
   defaultBrokerAccountId: string,
   preset?: { tickerId?: string; type?: TradeType },
-  selectedClass? :string,
+  selectedClass?: string,
 ): FormState {
-  const {isTrade, isDividendOrLongTerm} = getClassFlags(selectedClass);
+  const { isTrade, isDividendOrLongTerm } = getClassFlags(selectedClass);
   return {
     symbol: '',
     tickerId: preset?.tickerId ?? '',
@@ -90,8 +90,8 @@ function resetForm(
     profit: '',
     tradeDatetimeIso: nowIso(),
     brokerageFee: '0',
-    purpose: isTrade?'trade' :'',
-    reason: isDividendOrLongTerm? 'averagingDown' :'',
+    purpose: isTrade ? 'trade' : '',
+    reason: isDividendOrLongTerm ? 'averagingDown' : '',
   };
 }
 
@@ -124,7 +124,7 @@ export function CreateTradeDialog(props: {
     editingTradeId,
     initialValues,
     positionsByBrokerAccount,
-    selectedClass
+    selectedClass,
   } = props;
 
   const [saving, setSaving] = useState(false);
@@ -133,7 +133,10 @@ export function CreateTradeDialog(props: {
   const [profitTouched, setProfitTouched] = useState(false);
 
   const [form, setForm] = useState<FormState>(() =>
-    resetForm(defaultBrokerAccountId|| props.brokerItems[0]?.value || '', { tickerId: fixedTickerId, type: presetType }),
+    resetForm(defaultBrokerAccountId || props.brokerItems[0]?.value || '', {
+      tickerId: fixedTickerId,
+      type: presetType,
+    }),
   );
 
   // Separate local input string for datetime-local (full mode only)
@@ -150,15 +153,27 @@ export function CreateTradeDialog(props: {
   const keyValueIds = useMemo(() => ['tradePurpose', 'tradeReason'], []);
   const { data: keyValuePairs } = useKeyValuePairs(keyValueIds);
 
-  const purposeItems = useMemo(() =>
-    keyValuePairs?.tradePurpose
-      ? Object.entries(keyValuePairs.tradePurpose).map(([value, label]) => ({ value, label: label as string }))
-      : [], [keyValuePairs]);
+  const purposeItems = useMemo(
+    () =>
+      keyValuePairs?.tradePurpose
+        ? Object.entries(keyValuePairs.tradePurpose).map(([value, label]) => ({
+            value,
+            label: label as string,
+          }))
+        : [],
+    [keyValuePairs],
+  );
 
-  const reasonItems = useMemo(() =>
-    keyValuePairs?.tradeReason
-      ? Object.entries(keyValuePairs.tradeReason).map(([value, label]) => ({ value, label: label as string }))
-      : [], [keyValuePairs]);
+  const reasonItems = useMemo(
+    () =>
+      keyValuePairs?.tradeReason
+        ? Object.entries(keyValuePairs.tradeReason).map(([value, label]) => ({
+            value,
+            label: label as string,
+          }))
+        : [],
+    [keyValuePairs],
+  );
 
   // When dialog opens: set up defaults + focus rules
   useEffect(() => {
@@ -167,8 +182,15 @@ export function CreateTradeDialog(props: {
     // If editing, load initial; else reset with presets
     const next =
       editingTradeId && initialValues
-        ? ({ ...resetForm(defaultBrokerAccountId, undefined, selectedClass), ...initialValues } as FormState)
-        : resetForm(defaultBrokerAccountId || props.brokerItems[0]?.value, { tickerId: fixedTickerId, type: presetType }, selectedClass);
+        ? ({
+            ...resetForm(defaultBrokerAccountId, undefined, selectedClass),
+            ...initialValues,
+          } as FormState)
+        : resetForm(
+            defaultBrokerAccountId || props.brokerItems[0]?.value,
+            { tickerId: fixedTickerId, type: presetType },
+            selectedClass,
+          );
 
     setForm(next);
     setTradeDtLocal(isoToLocalInput(next.tradeDatetimeIso));
@@ -190,7 +212,7 @@ export function CreateTradeDialog(props: {
     presetType,
     editingTradeId,
     initialValues,
-    selectedClass
+    selectedClass,
   ]);
 
   // Auto-compute totalAmount = rate * quantity unless user has manually edited it
@@ -219,20 +241,29 @@ export function CreateTradeDialog(props: {
     if (form.tradeType !== 'sell') return;
     if (profitTouched) return;
     if (avgBookCost == null) return;
-  
+
     const r = Number(form.rate);
     const q = Number(form.quantity);
     const fee = Number(form.brokerageFee) || 0;
-  
+
     if (!Number.isFinite(r) || !Number.isFinite(q) || r <= 0 || q <= 0) return;
-  
-    const computed = ((r - avgBookCost) * q) - fee;
+
+    const computed = (r - avgBookCost) * q - fee;
     const next = computed.toFixed(2);
-  
+
     if (form.profit !== next) {
       setForm((p) => ({ ...p, profit: next }));
     }
-  }, [open, form.tradeType, form.rate, form.quantity, form.brokerageFee, form.brokerAccountId, profitTouched, avgBookCost]);
+  }, [
+    open,
+    form.tradeType,
+    form.rate,
+    form.quantity,
+    form.brokerageFee,
+    form.brokerAccountId,
+    profitTouched,
+    avgBookCost,
+  ]);
 
   // When closing: clear transient state (including fetched options in parent, if any)
   const handleClose = () => {
@@ -255,7 +286,7 @@ export function CreateTradeDialog(props: {
     if (!Number.isFinite(totalAmountNum) || totalAmountNum <= 0) return;
     if (form.profit.trim() && !Number.isFinite(profitNum!)) return;
 
-    const {isTrade, isDividendOrLongTerm} = getClassFlags(props.selectedClass);
+    const { isTrade, isDividendOrLongTerm } = getClassFlags(props.selectedClass);
 
     if (isTrade && !form.purpose) return;
     if (isTrade && !form.reason) return;
@@ -283,6 +314,7 @@ export function CreateTradeDialog(props: {
 
     setSaving(true);
     try {
+      console.log('send trade ', body);
       if (editingTradeId) {
         await updateTrade(editingTradeId, body as UpdateTradeDTO);
       } else {
@@ -297,7 +329,7 @@ export function CreateTradeDialog(props: {
   };
 
   // Render ticker selector:
-  const fixed = (mode === 'quick' && fixedTickerId)  || !!editingTradeId;
+  const fixed = (mode === 'quick' && fixedTickerId) || !!editingTradeId;
   const tickerValue = tickers.find((t) => t.id === form.tickerId) ?? null;
 
   const tickerField = fixed ? (
@@ -342,7 +374,7 @@ export function CreateTradeDialog(props: {
         size="small"
         label="Profit"
         value={form.profit}
-        onChange={(e) => 
+        onChange={(e) =>
           // setForm((p) => ({ ...p, profit: e.target.value }))
           {
             const v = e.target.value;
@@ -422,12 +454,14 @@ export function CreateTradeDialog(props: {
         onChange={(e) => setForm((p) => ({ ...p, purpose: e.target.value }))}
       >
         {purposeItems.map((item) => (
-          <MenuItem key={item.value} value={item.value}>{item.label}</MenuItem>
+          <MenuItem key={item.value} value={item.value}>
+            {item.label}
+          </MenuItem>
         ))}
       </Select>
     </FormControl>
   );
-  
+
   const reasonField = (
     <FormControl size="small">
       <InputLabel>Reason</InputLabel>
@@ -437,7 +471,9 @@ export function CreateTradeDialog(props: {
         onChange={(e) => setForm((p) => ({ ...p, reason: e.target.value }))}
       >
         {reasonItems.map((item) => (
-          <MenuItem key={item.value} value={item.value}>{item.label}</MenuItem>
+          <MenuItem key={item.value} value={item.value}>
+            {item.label}
+          </MenuItem>
         ))}
       </Select>
     </FormControl>
