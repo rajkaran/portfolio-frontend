@@ -53,8 +53,8 @@ export default function Trade() {
 
   // filters
   const [filterSymbols, setFilterSymbols] = useState<string[]>([]);
-  const [filterType, setFilterType] = useState<TradeType | ''>('');
-  const [filterBrokerAccountId, setFilterBrokerAccountId] = useState('');
+  const [filterType, setFilterType] = useState<TradeType | 'all'>('all');
+  const [filterBrokerAccountId, setFilterBrokerAccountId] = useState('all');
 
   // dialog
   const [open, setOpen] = useState(false);
@@ -74,7 +74,7 @@ export default function Trade() {
   const rowsReqIdRef = useRef(0);
   const countReqIdRef = useRef(0);
 
-  const brokerItems = useMemo(() => getBrokerItems(brokerAccounts, undefined,  true), [brokerAccounts]);
+  const brokerItems = useMemo(() => getBrokerItems(brokerAccounts, undefined, true), [brokerAccounts]);
   const brokerLabels = useMemo(() => getBrokerLabels(brokerAccounts, true), [brokerAccounts]);
 
   const defaultBrokerAccountId = useMemo(
@@ -121,8 +121,8 @@ export default function Trade() {
   const apiFilters = useMemo(
     () => ({
       symbols: filterSymbols.length ? filterSymbols : undefined,
-      tradeType: filterType || undefined,
-      brokerAccountId: filterBrokerAccountId || undefined,
+      tradeType: (!filterType||filterType === 'all') ? undefined : filterType,
+      brokerAccountId: (!filterBrokerAccountId ||filterBrokerAccountId === 'all') ? undefined : filterBrokerAccountId,
     }),
     [filterSymbols, filterType, filterBrokerAccountId],
   );
@@ -164,7 +164,7 @@ export default function Trade() {
   // websocket: if trade happens elsewhere (Dashboard quick trade), refresh page 0 automatically
   useEffect(() => {
     const ws = connectPricesWs({
-      onPriceUpdate: () => {}, // had to add this because its required in websocket class
+      onPriceUpdate: () => { }, // had to add this because its required in websocket class
       onTrade: (_m: TradeWsMsg) => {
         if (page === 0) {
           refresh(false);
@@ -307,33 +307,47 @@ export default function Trade() {
       </Stack>
 
       {/* Filters */}
+      <Box
+        sx={{
+          bgcolor: 'rgba(255,255,255,0.06)',
+          p: 2,
+          borderRadius: 2,
+          mb: 2,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 1.5,
+        }}
+      >
+        <Box sx={{ width: '100%' }}>
+          <TickerAutosuggest
+            tickers={tickerOptions}
+            value={selectedTickers}
+            onChange={(next) => setFilterSymbols(next.map((t) => t.symbol))}
+            label="Tickers"
+            placeholder="Filter trades by ticker(s)"
+          />
+        </Box>
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 2,
+          }}
+        >
           <Box
-            sx={{
-              bgcolor: 'rgba(255,255,255,0.06)',
-              p: 2,
-              borderRadius: 2,
-              mb: 2,
-              display: 'grid',
-              gridTemplateColumns: { xs: '1fr 1fr', md: '2fr 1fr 2fr' },
-              gap: 1.5,
-            }}
-            >
-            <TickerAutosuggest
-              tickers={tickerOptions}
-              value={selectedTickers}
-              onChange={(next) => setFilterSymbols(next.map((t) => t.symbol))}
-              label="Tickers"
-              placeholder="Filter trades by ticker(s)"
-              />
+            sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}
+          >
 
-            <FormControl size="small">
+            <FormControl size="small" sx={{ minWidth: 200 }}>
               <InputLabel>Type</InputLabel>
               <Select
                 label="Type"
                 value={filterType}
-                onChange={(e) => setFilterType(e.target.value as TradeType | '')}
-                >
-                <MenuItem value="">All</MenuItem>
+                onChange={(e) => setFilterType(e.target.value as TradeType | 'all')}
+              >
+                <MenuItem value="all">All</MenuItem>
                 <MenuItem value="buy">Buy</MenuItem>
                 <MenuItem value="sell">Sell</MenuItem>
               </Select>
@@ -347,8 +361,14 @@ export default function Trade() {
               includeAllOption
               allLabel="All Brokers"
               label="Broker"
-              />
+              sx={{ minWidth: 200 }}
+            />
           </Box>
+          <Typography variant="body2" sx={{ opacity: 0.8, fontWeight: 500, px: 1 }}>
+            Showing {totalCount} {totalCount === 1 ? 'trade' : 'trades'}
+          </Typography>
+        </Box>
+      </Box>
 
       {/* Grid "table" */}
       <Box sx={{ bgcolor: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden' }}>

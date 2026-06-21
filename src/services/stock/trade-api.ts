@@ -6,7 +6,7 @@ function buildWhere(params?: { symbols?: string[]; tradeType?: TradeType; broker
 
   if (params?.symbols?.length) and.push({ symbol: { inq: params.symbols } });
   if (params?.tradeType) and.push({ tradeType: params.tradeType });
-  if (params?.brokerAccountId) and.push({ broker: params.brokerAccountId });
+  if (params?.brokerAccountId) and.push({ brokerAccountId: params.brokerAccountId });
 
   and.push({ isActive: true });
 

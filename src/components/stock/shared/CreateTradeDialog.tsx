@@ -276,7 +276,6 @@ export function CreateTradeDialog(props: {
 
       brokerageFee: Number.isFinite(feeNum) ? feeNum : 0,
 
-      ...(profitNum != null ? { profit: profitNum } : {}),
       ...(form.purpose ? { purpose: form.purpose } : {}),
       ...(form.reason ? { reason: form.reason } : {}),
     };
@@ -342,9 +341,7 @@ export function CreateTradeDialog(props: {
         size="small"
         label="Profit"
         value={form.profit}
-        onChange={(e) => 
-          // setForm((p) => ({ ...p, profit: e.target.value }))
-          {
+        onChange={(e) => {
             const v = e.target.value;
             setProfitTouched(true);
             setForm((p) => ({ ...p, profit: v }));

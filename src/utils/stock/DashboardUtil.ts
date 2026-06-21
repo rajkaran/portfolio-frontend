@@ -24,19 +24,20 @@ export function pickDefaultBroker(
     .filter((a)=>posKeys.includes(a.id) && getBrokerQty(t, a.id) > 0)
     .sort((a,b)=>getBrokerPriority(a, stockClass) - getBrokerPriority(b, stockClass));
   if(withQty.length > 0) return withQty[0].id;
-  const sorted = accounts
-    .filter((a) => posKeys.includes(a.id))
-    .sort((a, b) => getBrokerPriority(a, stockClass) - getBrokerPriority(b, stockClass));
 
-  if (sorted.length) return sorted[0].id;
-
-  return posKeys[0] ?? '';
+  return '';
 }
 
 export function derivePositionFields(t: TickerLatestDTO, broker: string): Pick<TickerLatestDTO, 'avgBookCost'|'quantityHolding'|'totalReturn'> {
+  if (!broker){
+    return { avgBookCost: 0, quantityHolding: 0, totalReturn: 0 };
+  }
   const snap = t.positionsByBrokerAccount?.[broker];
-  const avg = typeof snap?.avgBookCost === 'number' ? snap.avgBookCost : null;
-  const qty = typeof snap?.quantityHolding === 'number' ? snap.quantityHolding : null;
+  let avg = typeof snap?.avgBookCost === 'number' ? snap.avgBookCost : 0;
+  const qty = typeof snap?.quantityHolding === 'number' ? snap.quantityHolding : 0;
+  if(qty === 0){
+    avg = 0;
+  }
 
   const last = typeof t.lastPrice === 'number' ? t.lastPrice : 0;
 

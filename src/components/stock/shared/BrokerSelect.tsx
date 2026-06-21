@@ -31,7 +31,7 @@ export function BrokerSelect(props: {
     <FormControl size={size} sx={sx} disabled={disabled}>
       <InputLabel>{label}</InputLabel>
       <Select label={label} value={value} onChange={(e) => onChange(String(e.target.value))}>
-        {includeAllOption && <MenuItem value="">{allLabel}</MenuItem>}
+        {includeAllOption && <MenuItem value="all">{allLabel}</MenuItem>}
         {items.map((b) => (
           <MenuItem key={b.value} value={b.value}>
             {b.label}

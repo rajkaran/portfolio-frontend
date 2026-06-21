@@ -97,15 +97,15 @@ export default function Ticker() {
 
   useEffect(() => {
     if (!marketItems.length || !classItems.length || !bucketItems.length) return;
-    if (filters.market && filters.stockClass && filters.buckets) return;
+    if (filters.market) return;
 
-    setFilters((prev) => ({
-      ...prev,
-      market: prev.market || getDefaultMarketValue(marketItems),
-      stockClass: prev.stockClass || getDefaultStockClassValue(classItems),
-      buckets: prev.buckets.length ? prev.buckets : getDefaultBucketValues(bucketItems),
+    setFilters(({
+      // ...prev,
+      market: getDefaultMarketValue(marketItems),
+      stockClass: getDefaultStockClassValue(classItems),
+      buckets: bucketItems.map(b=>b.value)
     }));
-  }, [marketItems, classItems, bucketItems, filters.market, filters.stockClass, filters.buckets]);
+  }, [marketItems, classItems, bucketItems, filters.market]);
 
   
 
@@ -312,7 +312,10 @@ export default function Ticker() {
               <BucketMultiSelect
                 value={bucketItems.length ? filters.buckets : []}
                 items={bucketItems}
-                onChange={(v) => setFilters((p) => ({ ...p, buckets: v }))}
+                onChange={(v) => {
+                  const newBuckets = v.length === 0? bucketItems.map(b=>b.value):v;
+                  setFilters((p) => ({ ...p, buckets: newBuckets}))
+                }}
                 disabled={pairsLoading}
                 sx={{ minWidth: 100 }}
               />

@@ -78,6 +78,11 @@ export default function Dashboard() {
 
   const stockClassRef = useRef<string>(filters.stockClass);
 
+  const brokerAccountsRef = useRef(brokerAccounts);
+  useEffect(()=>{
+    brokerAccountsRef.current = brokerAccounts;
+  },[brokerAccounts])
+
   // TODO: add a page to record dividends.
   // TODO: create dividend tiles and notifications through emails
   // TODO: complete favorability bar
@@ -285,7 +290,18 @@ export default function Dashboard() {
           };
 
           // keep selection stable, but ensure it exists
-          const selected = updated.uiSelectedBroker ?? pickDefaultBroker(updated, brokerAccounts ?? [], stockClassRef.current);
+          let selected = updated.uiSelectedBroker;
+
+          // Get the current quantity of the selected broker 
+          const currentQty = selected ? (updated.positionsByBrokerAccount?.[selected]?.quantityHolding ?? 0) : 0;
+
+          //If no selection exists, OR if current broker dropped to 0 units(after a sell)
+          if(!selected || currentQty <= 0) {
+            //Find the next available broker based on priority
+
+            //if the next available broker ALSO has 0 units, clear the selection entirely
+            selected = pickDefaultBroker(updated, brokerAccountsRef.current ?? [], stockClassRef.current);
+          }
           updated.uiSelectedBroker = selected;
 
           // If selected broker changed in the event OR selection was missing, recompute derived fields.
