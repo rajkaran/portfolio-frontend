@@ -290,7 +290,12 @@ export function CreateTradeDialog(props: {
 
       await props.onSaved?.();
       handleClose();
-    } finally {
+    } catch(e: any){
+      const errorMsg = e?.response?.data?.error?.message || e?.message || 'Unknown error';
+      alert(`Failed to save trade: ${errorMsg}`);
+      console.error('Failed to save trade', e);
+      
+    }finally {
       setSaving(false);
     }
   };
@@ -475,35 +480,26 @@ export function CreateTradeDialog(props: {
         <DialogContent>
           <Box sx={{ display: 'grid', gap: 1.5 }}>
             {/* Ticker always visible; fixed in quick mode */}
-            {tickerField}
 
-            {/* Order matters for tabbing */}
-            {mode === 'quick' ? (
+            {tickerField}
+            {brokerField}
+            {typeField}
+            <Box sx={{display:'flex', gap:1.5}}>
+              <Box sx={{flex:1}}>{rateField}</Box>
+              <Box sx={{flex:1}}>{qtyField}</Box>
+            </Box>
+            {profitField}
+            {totalAmountField}
+            {mode==='full' && (
               <>
-                {rateField}
-                {qtyField}
-                {profitField}
-                {totalAmountField}
-                {typeField}
-                {brokerField}
-                {purposeField}
-                {reasonField}
-                {/* quick mode intentionally hides datetime picker */}
-              </>
-            ) : (
-              <>
-                {typeField}
-                {brokerField}
-                {brokerageFeeField}
-                {rateField}
-                {qtyField}
-                {profitField}
-                {totalAmountField}
-                {tradeDatetimeField}
-                {purposeField}
-                {reasonField}
+              {brokerageFeeField}
+              {tradeDatetimeField}
               </>
             )}
+            {purposeField}
+            {reasonField}
+
+            {/* Order matters for tabbing */}
           </Box>
         </DialogContent>
 

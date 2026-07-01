@@ -3,7 +3,7 @@ import type { BrokerAccountDTO } from '../../types/stock/broker-account.types';
 import type { TickerLatestDTO } from '../../types/stock/ticker.types';
 
 function getBrokerPriority(account: BrokerAccountDTO, stockClass: string):number{
-  const list = stockClass === 'TRADE'? TRADE_PRIORITY : LT_PRIORITY;
+  const list = (stockClass || '').toUpperCase() === 'TRADE'? TRADE_PRIORITY : LT_PRIORITY;
   const idx = list.findIndex((p)=>p.broker === account.broker && p.name === account.name);
   return idx === -1 ? 999 : idx;
 }
