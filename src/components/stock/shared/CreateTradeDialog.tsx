@@ -11,6 +11,7 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  Alert,
 } from '@mui/material';
 import type { BrokerPositionSnapshotDTO, TickerOption } from '../../../types/stock/ticker.types';
 import type {
@@ -128,6 +129,7 @@ export function CreateTradeDialog(props: {
   } = props;
 
   const [saving, setSaving] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [totalAmountTouched, setTotalAmountTouched] = useState(false);
 
   const [profitTouched, setProfitTouched] = useState(false);
@@ -174,6 +176,7 @@ export function CreateTradeDialog(props: {
     setTradeDtLocal(isoToLocalInput(next.tradeDatetimeIso));
     setTotalAmountTouched(false);
     setProfitTouched(false);
+    setErrorMsg(null);
 
     // Focus: quick -> rate, full -> ticker
     const t = setTimeout(() => {
@@ -291,10 +294,11 @@ export function CreateTradeDialog(props: {
       await props.onSaved?.();
       handleClose();
     } catch(e: any){
-      const errorMsg = e?.response?.data?.error?.message || e?.message || 'Unknown error';
-      alert(`Failed to save trade: ${errorMsg}`);
       console.error('Failed to save trade', e);
-      
+      const errorMsg = e?.response?.data?.error?.message || 
+      e?.response?.data?.message || 
+      e?.message || 'Failed to save trade. Please try again.';
+      setErrorMsg(errorMsg);
     }finally {
       setSaving(false);
     }
@@ -323,6 +327,7 @@ export function CreateTradeDialog(props: {
     <TextField
       size="small"
       label="Rate"
+      fullWidth
       value={form.rate}
       inputRef={rateRef} // <— focus for quick mode
       onChange={(e) => setForm((p) => ({ ...p, rate: e.target.value }))}
@@ -334,6 +339,7 @@ export function CreateTradeDialog(props: {
     <TextField
       size="small"
       label="Quantity"
+      fullWidth
       value={form.quantity}
       onChange={(e) => setForm((p) => ({ ...p, quantity: e.target.value }))}
       inputProps={{ inputMode: 'numeric' }}
@@ -480,6 +486,11 @@ export function CreateTradeDialog(props: {
         <DialogContent>
           <Box sx={{ display: 'grid', gap: 1.5 }}>
             {/* Ticker always visible; fixed in quick mode */}
+            {errorMsg && (
+              <Alert severity='error' onClose={()=>setErrorMsg(null)}>
+                {errorMsg}
+              </Alert>
+            )}
 
             {tickerField}
             {brokerField}

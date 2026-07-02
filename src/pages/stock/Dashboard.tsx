@@ -66,6 +66,7 @@ export default function Dashboard() {
   const [tradeOpen, setTradeOpen] = useState(false);
   const [tradeTickerId, setTradeTickerId] = useState<string | null>(null);
   const [tradeSide, setTradeSide] = useState<'buy' | 'sell'>('buy');
+  const [tradeSpecificBrokerId, setTradeSpecificBrokerId] = useState<string | null>(null);
 
   // last seen lastPrice per symbol
   const lastPriceRef = useRef<Record<string, number>>({});
@@ -409,15 +410,17 @@ export default function Dashboard() {
     });
   }, []);
 
-  const openQuickTrade = useCallback((tickerId: string, side: 'buy' | 'sell') => {
+  const openQuickTrade = useCallback((tickerId: string, side: 'buy' | 'sell', specificBrokerId?:string) => {
     setTradeTickerId(tickerId);
     setTradeSide(side);
+    setTradeSpecificBrokerId(specificBrokerId ?? null);
     setTradeOpen(true);
   }, []);
 
   const closeQuickTrade = useCallback(() => {
     setTradeOpen(false);
     setTradeTickerId(null);
+    setTradeSpecificBrokerId(null);
   }, []);
 
   const onChangeThreshold = async (tickerId: string, key: ThresholdKey, value: number) => {
@@ -470,7 +473,7 @@ export default function Dashboard() {
           onClose={closeRight}
           tickers={favorableTickers}
           brokerLabels={brokerLabels}
-          onTrade={(tickerId, side) => openQuickTrade(tickerId, side)}
+          onTrade={(tickerId:string, side: TradeType, specificBrokerId?: string) => openQuickTrade(tickerId, side, specificBrokerId)}
           onChangeThreshold={onChangeThreshold}
           onSelectBroker={onSelectBroker}
           silencedById={silencedById}
@@ -501,7 +504,7 @@ export default function Dashboard() {
         tickers={visibleTickers}
         brokerLabels={brokerLabels}
         onZoom={onZoom}
-        onTrade={(tickerId: string, side: TradeType) => openQuickTrade(tickerId, side)}
+        onTrade={(tickerId: string, side: TradeType, specificBrokerId?: string) => openQuickTrade(tickerId, side, specificBrokerId)}
         onChangeThreshold={onChangeThreshold}
         onSelectBroker={onSelectBroker}
         silencedById={silencedById}
@@ -524,9 +527,13 @@ export default function Dashboard() {
         fixedTickerId={tradeTickerId ?? undefined}
         presetType={tradeSide}
         selectedClass={filters.stockClass}
+        defaultBrokerAccountId={
+          tradeSpecificBrokerId || 
+          (tradeTickerId? tickerMap.get(tradeTickerId)?.uiSelectedBroker : undefined)
+        }
         positionsByBrokerAccount={
           tradeTickerId
-            ? [...tickerMap.values()].find((t) => t.id === tradeTickerId)?.positionsByBrokerAccount
+            ? tickerMap.get(tradeTickerId)?.positionsByBrokerAccount
             : undefined
         }
       />

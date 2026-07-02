@@ -61,7 +61,7 @@ export default function TickerCard(props: {
   ticker: TickerLatestDTO;
   brokerLabels: Record<string, string>;
   onZoom: (id: string, anchorEl: HTMLElement | null) => void;
-  onTrade: (id: string, side: 'buy' | 'sell') => void;
+  onTrade: (id: string, side: 'buy' | 'sell', specificBrokerId?: string) => void;
   onChangeThreshold: (tickerId: string, key: ThresholdKey, value: number) => void;
   onSelectBroker: (symbol: string, broker: string) => void;
   silenced: boolean;
@@ -261,13 +261,13 @@ export default function TickerCard(props: {
                 <ListItemText>Zoom</ListItemText>
               </MenuItem>
             )}
-            <MenuItem onClick={() => handleAction(() => onTrade(ticker.id, 'buy'))}>
+            <MenuItem onClick={() => handleAction(() => onTrade(ticker.id, 'buy', displayBroker))}>
               <ListItemIcon>
                 <ShoppingCartIcon fontSize="small" />
               </ListItemIcon>
               <ListItemText>Buy</ListItemText>
             </MenuItem>
-            <MenuItem onClick={() => handleAction(() => onTrade(ticker.id, 'sell'))}>
+            <MenuItem onClick={() => handleAction(() => onTrade(ticker.id, 'sell', displayBroker))}>
               <ListItemIcon>
                 <SellIcon fontSize="small" />
               </ListItemIcon>
