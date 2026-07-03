@@ -1,4 +1,4 @@
-import { FormControl, InputLabel, MenuItem, Select } from '@mui/material';
+import { FormControl, FormHelperText, InputLabel, MenuItem, Select } from '@mui/material';
 import type { SxProps, Theme } from '@mui/material/styles';
 import type { DropdownItem } from '../../../utils/stock/prepareDropdownOptions';
 
@@ -11,6 +11,8 @@ export function BrokerSelect(props: {
   size?: 'small' | 'medium';
   disabled?: boolean;
   sx?: SxProps<Theme>;
+  error?: boolean;
+  helperText?: string;
 
   includeAllOption?: boolean; // for filter usage
   allLabel?: string; // optional
@@ -25,6 +27,8 @@ export function BrokerSelect(props: {
     sx,
     includeAllOption = false,
     allLabel = 'All',
+    error,
+    helperText,
   } = props;
 
   return (
@@ -38,6 +42,7 @@ export function BrokerSelect(props: {
           </MenuItem>
         ))}
       </Select>
+      {error && helperText && (<FormHelperText>{helperText}</FormHelperText>)}
     </FormControl>
   );
 }

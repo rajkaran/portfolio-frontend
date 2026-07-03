@@ -14,6 +14,8 @@ export function SingleTickerSelect(props: {
   label?: string;
   placeholder?: string;
   disabled?: boolean;
+  error?: boolean;
+  helperText?: string;
   showBucket?: boolean;
 }) {
   const {
@@ -22,6 +24,8 @@ export function SingleTickerSelect(props: {
     placeholder = 'Type symbol or company name',
     disabled,
     showBucket = true,
+    error,
+    helperText,
   } = props;
 
   return (
@@ -42,7 +46,7 @@ export function SingleTickerSelect(props: {
         );
       }}
       renderInput={(params) => (
-        <TextField {...params} size="small" label={label} placeholder={placeholder} />
+        <TextField {...params} size="small" label={label} placeholder={placeholder} error={error} helperText={helperText}/>
       )}
       renderOption={(optionProps, opt) => (
         <Box

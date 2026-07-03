@@ -12,6 +12,7 @@ import {
   Select,
   MenuItem,
   Alert,
+  FormHelperText,
 } from '@mui/material';
 import type { BrokerPositionSnapshotDTO, TickerOption } from '../../../types/stock/ticker.types';
 import type {
@@ -130,6 +131,7 @@ export function CreateTradeDialog(props: {
 
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [errors, setErrors]= useState<Record<string, string>>({});
   const [totalAmountTouched, setTotalAmountTouched] = useState(false);
 
   const [profitTouched, setProfitTouched] = useState(false);
@@ -177,6 +179,7 @@ export function CreateTradeDialog(props: {
     setTotalAmountTouched(false);
     setProfitTouched(false);
     setErrorMsg(null);
+    setErrors({});
 
     // Focus: quick -> rate, full -> ticker
     const t = setTimeout(() => {
@@ -243,26 +246,37 @@ export function CreateTradeDialog(props: {
   };
 
   const submit = async () => {
+    const nextErrors: Record<string, string> = {};
     // Basic validation
-    if (!form.tickerId) return;
-    if (!form.brokerAccountId?.trim()) return;
+    if (!form.tickerId) nextErrors.tickerId = '• Ticker is required';
+    if (!form.brokerAccountId?.trim()) nextErrors.brokerAccountId = '• Broker is required';
 
     const rateNum = Number(form.rate);
+    if (!rateNum || !Number.isFinite(rateNum) || rateNum <= 0) nextErrors.rate = '• Valid Rate is required';
+
     const qtyNum = Number(form.quantity);
+    if (!qtyNum || !Number.isFinite(qtyNum) || qtyNum <= 0) nextErrors.quantity = '• Valid Quantity is required';
+
     const totalAmountNum = Number(form.totalAmount);
+    if (!totalAmountNum || !Number.isFinite(totalAmountNum) || totalAmountNum <= 0) nextErrors.totalAmount = '• Could not Calculate Total Amount';
+
     const profitNum = form.profit.trim() ? Number(form.profit) : null;
+    if (!profitNum || form.profit.trim() && !Number.isFinite(profitNum!)) nextErrors.profit = '• Could not Calculate Profit';
+
     const feeNum = form.brokerageFee.trim() === '' ? 0 : Number(form.brokerageFee);
 
-    if (!Number.isFinite(rateNum) || rateNum <= 0) return;
-    if (!Number.isFinite(qtyNum) || qtyNum <= 0) return;
-    if (!Number.isFinite(totalAmountNum) || totalAmountNum <= 0) return;
-    if (form.profit.trim() && !Number.isFinite(profitNum!)) return;
 
     const {isTrade, isDividendOrLongTerm} = getClassFlags(props.selectedClass);
+    if(isTrade && !form.purpose) nextErrors.purpose = '• Purpose is required';
+    if(isTrade && !form.reason) nextErrors.reason = '• Reason is required';
+    if(isDividendOrLongTerm && !form.purpose) nextErrors.purpose = '• Purpose is required';
 
-    if (isTrade && !form.purpose) return;
-    if (isTrade && !form.reason) return;
-    if (isDividendOrLongTerm && !form.purpose) return;
+    if(Object.keys(nextErrors).length>0){
+      setErrors(nextErrors);
+      return;
+    }
+
+    setErrors({});
 
     const symbolToSend =
       tickers.find((t) => t.id === form.tickerId)?.symbol?.trim() || form.symbol?.trim() || '';
@@ -314,9 +328,14 @@ export function CreateTradeDialog(props: {
     <SingleTickerSelect
       tickers={tickers}
       value={tickerValue}
-      onChange={(v) => setForm((p) => ({ ...p, tickerId: v?.id ?? '', symbol: v?.symbol ?? '' }))}
+      onChange={(v) => {
+        setForm((p) => ({ ...p, tickerId: v?.id ?? '', symbol: v?.symbol ?? '' }))
+        setErrors((p)=>({...p, tickerId:''}))
+      }}
       label="Ticker"
       disabled={saving}
+      error={!!errors.tickerId}
+      helperText={errors.tickerId}
     />
   );
 
@@ -330,8 +349,13 @@ export function CreateTradeDialog(props: {
       fullWidth
       value={form.rate}
       inputRef={rateRef} // <— focus for quick mode
-      onChange={(e) => setForm((p) => ({ ...p, rate: e.target.value }))}
+      onChange={(e)=>{
+        setForm((p)=>({ ...p, rate: e.target.value}));
+        setErrors((p)=>({...p, rate:''}));
+      }}
       inputProps={{ inputMode: 'decimal' }}
+      error={!!errors.rate}
+      helperText={errors.rate}
     />
   );
 
@@ -341,8 +365,13 @@ export function CreateTradeDialog(props: {
       label="Quantity"
       fullWidth
       value={form.quantity}
-      onChange={(e) => setForm((p) => ({ ...p, quantity: e.target.value }))}
+      onChange={(e) => {
+        setForm((p) => ({ ...p, quantity: e.target.value }))
+        setErrors((p)=>({...p, quantity:''}));
+      }}
       inputProps={{ inputMode: 'numeric' }}
+      error={!!errors.quantity}
+      helperText={errors.quantity}
     />
   );
 
@@ -356,10 +385,13 @@ export function CreateTradeDialog(props: {
             const v = e.target.value;
             setProfitTouched(true);
             setForm((p) => ({ ...p, profit: v }));
+            setErrors((p)=>({...p, profit:''}));
             if (v.trim() === '') setProfitTouched(false);
           }
         }
         inputProps={{ inputMode: 'decimal' }}
+        error={!!errors.profit}
+        helperText={errors.profit}
       />
     ) : null;
 
@@ -372,10 +404,13 @@ export function CreateTradeDialog(props: {
         const v = e.target.value;
         setTotalAmountTouched(true);
         setForm((p) => ({ ...p, totalAmount: v }));
+        setErrors((p)=>({...p, totalAmount:''}));
         // Optional: if they clear it, resume auto mode
         if (v.trim() === '') setTotalAmountTouched(false);
       }}
       inputProps={{ inputMode: 'decimal' }}
+      error={!!errors.totalAmount}
+      helperText={errors.totalAmount}
     />
   );
 
@@ -402,10 +437,15 @@ export function CreateTradeDialog(props: {
   const brokerField = (
     <BrokerSelect
       value={form.brokerAccountId}
-      onChange={(v) => setForm((p) => ({ ...p, brokerAccountId: v }))}
+      onChange={(v) => {
+        setForm((p) => ({ ...p, brokerAccountId: v }))
+        setErrors((p)=>({...p, brokerAccountId:''}))
+      }}
       items={props.brokerItems}
       disabled={saving}
       includeAllOption={false}
+      error={!!errors.brokerAccountId}
+      helperText={errors.brokerAccountId}
     />
   );
 
@@ -422,32 +462,40 @@ export function CreateTradeDialog(props: {
   );
 
   const purposeField = (
-    <FormControl size="small">
+    <FormControl size="small" error={!!errors.purpose}>
       <InputLabel>Purpose</InputLabel>
       <Select
         label="Purpose"
         value={form.purpose}
-        onChange={(e) => setForm((p) => ({ ...p, purpose: e.target.value }))}
+        onChange={(e) => {
+          setForm((p) => ({ ...p, purpose: e.target.value }))
+          setErrors((p)=>({...p, purpose:''}))
+        }}
       >
         {purposeItems.map((item) => (
           <MenuItem key={item.value} value={item.value}>{item.label}</MenuItem>
         ))}
       </Select>
+      {errors.purpose && <FormHelperText>{errors.purpose}</FormHelperText>}
     </FormControl>
   );
   
   const reasonField = (
-    <FormControl size="small">
+    <FormControl size="small" error={!!errors.reason}>
       <InputLabel>Reason</InputLabel>
       <Select
         label="Reason"
         value={form.reason}
-        onChange={(e) => setForm((p) => ({ ...p, reason: e.target.value }))}
+        onChange={(e) => {
+          setForm((p) => ({ ...p, reason: e.target.value }))
+          setErrors((p)=>({...p, reason:''}))
+        }}
       >
         {reasonItems.map((item) => (
           <MenuItem key={item.value} value={item.value}>{item.label}</MenuItem>
         ))}
       </Select>
+      {errors.reason && <FormHelperText>{errors.reason}</FormHelperText>}
     </FormControl>
   );
 
