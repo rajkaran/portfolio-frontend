@@ -1,4 +1,3 @@
-import { LT_PRIORITY, TRADE_PRIORITY } from '../../constants/brokerAccountPriority';
 import type { BrokerAccountDTO } from '../../types/stock/broker-account.types';
 import type { KeyValueMap } from '../../types/stock/key-value-pairs.types';
 import type { StockExchangeDTO } from '../../types/stock/stock-exchange.types';
@@ -45,13 +44,12 @@ export function formatBrokerAccountLabel(account: BrokerAccountDTO, fullName: Bo
 
 export function getBrokerItems(brokerAccounts: BrokerAccountDTO[] | undefined, selectedClass?: string, useFullName=false): DropdownItem[] {
   if (!brokerAccounts?.length) return [];
-
-  const list = selectedClass === 'trade' || !selectedClass ? TRADE_PRIORITY : LT_PRIORITY;
+  const isTrade = (selectedClass || '').toUpperCase() === 'TRADE';
 
   const sorted = [...brokerAccounts].sort((a, b) => {
-    const aIdx = list.findIndex((p) => p.broker === a.broker && a.name.includes(p.name));
-    const bIdx = list.findIndex((p) => p.broker === b.broker && b.name.includes(p.name));
-    return (aIdx === -1 ? 99: aIdx) - (bIdx === -1 ? 99: bIdx);
+    const aIdx = isTrade?(a.tradePriority ?? 999) : (a.longTermPriority??999);
+    const bIdx = isTrade?(b.tradePriority ?? 999) : (b.longTermPriority??999);
+    return aIdx - bIdx;
   });
 
   return sorted.map((account) => ({

@@ -22,6 +22,8 @@ export async function fetchBrokerAccounts(): Promise<BrokerAccountDTO[]> {
           name: true,
           alias: true,
           stockClass: true,
+          tradePriority: true,
+          longTermPriority: true,
         },
       },
     },

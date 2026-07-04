@@ -4,6 +4,8 @@ export type BrokerAccountDTO = {
   name: string;
   alias: string;
   stockClass: string;
+  tradePriority?: number;
+  longTermPriority?: number;
 };
 
 export type CachedBrokerAccounts = {
