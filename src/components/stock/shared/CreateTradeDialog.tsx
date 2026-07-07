@@ -220,6 +220,7 @@ export function CreateTradeDialog(props: {
     }
   }, [open, form.rate, form.quantity, totalAmountTouched]);
 
+  
   useEffect(() => {
     if (!open) return;
     if (form.tradeType !== 'sell') return;
@@ -260,8 +261,10 @@ export function CreateTradeDialog(props: {
     const totalAmountNum = Number(form.totalAmount);
     if (!totalAmountNum || !Number.isFinite(totalAmountNum) || totalAmountNum <= 0) nextErrors.totalAmount = '• Could not Calculate Total Amount';
 
-    const profitNum = form.profit.trim() ? Number(form.profit) : null;
-    if (!profitNum || form.profit.trim() && !Number.isFinite(profitNum!)) nextErrors.profit = '• Could not Calculate Profit';
+    if (form.tradeType === 'sell') {
+      const profitNum = form.profit.trim() ? Number(form.profit) : null;
+      if (!profitNum || form.profit.trim() && !Number.isFinite(profitNum!)) nextErrors.profit = '• Could not Calculate Profit';
+    }
 
     const feeNum = form.brokerageFee.trim() === '' ? 0 : Number(form.brokerageFee);
 

@@ -533,7 +533,7 @@ export default function Dashboard() {
         }
         positionsByBrokerAccount={
           tradeTickerId
-            ? tickerMap.get(tradeTickerId)?.positionsByBrokerAccount
+            ? [...tickerMap.values()].find((t) => t.id === tradeTickerId)?.positionsByBrokerAccount
             : undefined
         }
       />
