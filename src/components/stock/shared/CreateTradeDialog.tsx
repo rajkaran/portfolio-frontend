@@ -14,7 +14,7 @@ import {
   Alert,
   FormHelperText,
 } from '@mui/material';
-import type { BrokerPositionSnapshotDTO, TickerOption } from '../../../types/stock/ticker.types';
+import type { TickerOption } from '../../../types/stock/ticker.types';
 import type {
   CreateTradeDTO,
   TradeDialogMode,
@@ -113,7 +113,6 @@ export function CreateTradeDialog(props: {
 
   onSaved?: () => void | Promise<void>;
   selectedClass?: string;
-  positionsByBrokerAccount?: Partial<Record<string, BrokerPositionSnapshotDTO>>;
 }) {
   const {
     open,
@@ -125,7 +124,6 @@ export function CreateTradeDialog(props: {
     presetType,
     editingTradeId,
     initialValues,
-    positionsByBrokerAccount,
     selectedClass
   } = props;
 
@@ -144,8 +142,9 @@ export function CreateTradeDialog(props: {
   const [tradeDtLocal, setTradeDtLocal] = useState<string>(() =>
     isoToLocalInput(form.tradeDatetimeIso),
   );
-
-  const avgBookCost = positionsByBrokerAccount?.[form.brokerAccountId]?.avgBookCost;
+  
+  const selectedTicker = tickers.find((t)=>t.id === form.tickerId);
+  const avgBookCost =selectedTicker?.positionsByBrokerAccount?.[form.brokerAccountId]?.avgBookCost;
 
   // refs for focus behavior
   const tickerInputRef = useRef<HTMLInputElement | null>(null);

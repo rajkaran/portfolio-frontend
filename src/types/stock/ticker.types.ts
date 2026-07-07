@@ -16,6 +16,7 @@ export type TickerOption = {
   symbol: string;
   companyName?: string;
   bucket?: string;
+  positionsByBrokerAccount?: Partial<Record<string, BrokerPositionSnapshotDTO>>;
 };
 
 export type BrokerPositionSnapshotDTO = {

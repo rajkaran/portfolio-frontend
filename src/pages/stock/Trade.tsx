@@ -33,18 +33,11 @@ import {
   getDefaultBrokerAccountId,
 } from '../../utils/stock/prepareDropdownOptions';
 
-type TickerLite = {
-  id: string;
-  symbol: string;
-  companyName?: string;
-  bucket?: string;
-};
-
 export default function Trade() {
   const { showSnackbar } = useSnackbar();
   const { data: brokerAccounts, loading: brokerAccountsLoading } = useBrokerAccounts(true);
 
-  const [tickers, setTickers] = useState<TickerLite[]>([]);
+  const [tickers, setTickers] = useState<TickerOption[]>([]);
 
   const [rows, setRows] = useState<TradeDTO[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -107,6 +100,7 @@ export default function Trade() {
         symbol: t.symbol,
         companyName: t.companyName,
         bucket: t.bucket,
+        positionsByBrokerAccount: t.positionsByBrokerAccount, // we don't need positions here
       })),
     [tickers],
   );
@@ -148,6 +142,7 @@ export default function Trade() {
             symbol: x.symbol,
             companyName: x.companyName,
             bucket: x.bucket,
+            positionsByBrokerAccount: x.positionsByBrokerAccount,
           })),
         );
       } catch (e: any) {

@@ -101,6 +101,7 @@ export default function Dashboard() {
         symbol: t.symbol,
         companyName: t.companyName,
         bucket: t.bucket,
+        positionsByBrokerAccount: t.positionsByBrokerAccount,
       })),
     [tickers],
   );
@@ -530,11 +531,6 @@ export default function Dashboard() {
         defaultBrokerAccountId={
           tradeSpecificBrokerId || 
           (tradeTickerId? tickerMap.get(tradeTickerId)?.uiSelectedBroker : undefined)
-        }
-        positionsByBrokerAccount={
-          tradeTickerId
-            ? [...tickerMap.values()].find((t) => t.id === tradeTickerId)?.positionsByBrokerAccount
-            : undefined
         }
       />
     </StockShell>
