@@ -142,7 +142,7 @@ export function CreateTradeDialog(props: {
   const [tradeDtLocal, setTradeDtLocal] = useState<string>(() =>
     isoToLocalInput(form.tradeDatetimeIso),
   );
-  
+
   const selectedTicker = tickers.find((t)=>t.id === form.tickerId);
   const avgBookCost =selectedTicker?.positionsByBrokerAccount?.[form.brokerAccountId]?.avgBookCost;
 
@@ -219,9 +219,10 @@ export function CreateTradeDialog(props: {
     }
   }, [open, form.rate, form.quantity, totalAmountTouched]);
 
-  
+  //Profit Calculation
   useEffect(() => {
     if (!open) return;
+    if (editingTradeId) return;
     if (form.tradeType !== 'sell') return;
     if (profitTouched) return;
     if (avgBookCost == null) return;
@@ -260,7 +261,7 @@ export function CreateTradeDialog(props: {
     const totalAmountNum = Number(form.totalAmount);
     if (!totalAmountNum || !Number.isFinite(totalAmountNum) || totalAmountNum <= 0) nextErrors.totalAmount = '• Could not Calculate Total Amount';
 
-    if (form.tradeType === 'sell') {
+    if (form.tradeType === 'sell'&& !editingTradeId) {
       const profitNum = form.profit.trim() ? Number(form.profit) : null;
       if (!profitNum || form.profit.trim() && !Number.isFinite(profitNum!)) nextErrors.profit = '• Could not Calculate Profit';
     }
