@@ -261,7 +261,7 @@ export function CreateTradeDialog(props: {
     const totalAmountNum = Number(form.totalAmount);
     if (!totalAmountNum || !Number.isFinite(totalAmountNum) || totalAmountNum <= 0) nextErrors.totalAmount = '• Could not Calculate Total Amount';
 
-    if (form.tradeType === 'sell'&& !editingTradeId) {
+    if (form.tradeType === 'sell') {
       const profitNum = form.profit.trim() ? Number(form.profit) : null;
       if (!profitNum || form.profit.trim() && !Number.isFinite(profitNum!)) nextErrors.profit = '• Could not Calculate Profit';
     }
