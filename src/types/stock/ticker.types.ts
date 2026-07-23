@@ -1,7 +1,7 @@
-export type Market = 'canada' | 'usa' | 'india';
-export type StockClass = 'dividend' | 'trade' | 'longTerm';
-export type Bucket = 'core' | 'watch' | 'once' | 'avoid';
-export type BrokerId = 'wealthsimple' | 'questrade' | 'td';
+export type Market = string; // IDs for exchanges stored in db
+export type StockClass = string;
+export type Bucket = string;
+export type BrokerId = string;
 
 export type ThresholdPatch = Partial<{
   thresholdGreen: number;
@@ -15,7 +15,8 @@ export type TickerOption = {
   id: string;
   symbol: string;
   companyName?: string;
-  bucket?: Bucket;
+  bucket?: string;
+  positionsByBrokerAccount?: Partial<Record<string, BrokerPositionSnapshotDTO>>;
 };
 
 export type BrokerPositionSnapshotDTO = {
@@ -25,16 +26,18 @@ export type BrokerPositionSnapshotDTO = {
   anchorTradeDatetime?: string | null;
   isPositionDirty?: boolean | null;
   dirtySinceTradeDatetime?: string | null;
+  broker?: string|null;
+  name?: string|null;
 };
 
 export type TickerLatestDTO = {
   id: string;
   symbol: string;
   companyName?: string;
-  market: Market;
-  stockClasses: StockClass[];
-  industry: string;
-  bucket: Bucket;
+  market: string;
+  stockClasses: string[];
+  industryTags: string[];
+  bucket: string;
 
   symbolId?: number | null;
   lastPrice?: number | null;
@@ -49,10 +52,10 @@ export type TickerLatestDTO = {
   thresholdOrange: number;
   thresholdRed: number;
 
-  positionsByBroker?: Partial<Record<BrokerId, BrokerPositionSnapshotDTO>>;
+  positionsByBrokerAccount?: Partial<Record<string, BrokerPositionSnapshotDTO>>;
 
   // UI-only (stored in state, not backend)
-  uiSelectedBroker?: BrokerId;
+  uiSelectedBroker?: string;
 
   // keep these derived fields
   avgBookCost?: number | null;
@@ -64,10 +67,10 @@ export type TickerDTO = {
   id: string;
   symbol: string;
   companyName: string;
-  market: Market;
-  stockClasses: StockClass[];
-  industry: string;
-  bucket: Bucket;
+  market: string;
+  stockClasses: string[];
+  industryTags: string[];
+  bucket: string;
 };
 
 export type CreateTickerDTO = Omit<TickerDTO, 'id'>;
@@ -86,15 +89,30 @@ export type SymbolSuggestDTO = {
 export type SortBy = 'az' | 'za' | 'bucket' | 'favorability';
 
 export type StockFilters = {
-  market: Market;
-  stockClass: StockClass;
+  market: string;
+  stockClass: string;
   sortBy: SortBy;
   symbols: string[]; // e.g. ["WFG.TO", "SHOP.TO"]
 };
 
 export const defaultStockFilters: StockFilters = {
-  market: 'canada',
-  stockClass: 'trade',
+  market: '',
+  stockClass: '',
   sortBy: 'bucket',
   symbols: [],
+};
+
+export type FilterState = {
+  market: string;
+  stockClass: string;
+  buckets: string[];
+};
+
+export type FormState = {
+  symbol: string;
+  companyName: string;
+  market: string;
+  stockClasses: string[];
+  industryTags: string[];
+  bucket: string;
 };

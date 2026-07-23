@@ -1,11 +1,10 @@
 import { FormControl, InputLabel, MenuItem, Select } from '@mui/material';
 import type { SxProps, Theme } from '@mui/material/styles';
-import type { StockClass } from '../../../types/stock/ticker.types';
 
 export function StockClassSelect(props: {
-  value: StockClass;
-  onChange: (v: StockClass) => void;
-  items: { value: StockClass; label: string }[];
+  value: string;
+  onChange: (v: string) => void;
+  items: { value: string; label: string }[];
   label?: string;
   size?: 'small' | 'medium';
   disabled?: boolean;
@@ -16,9 +15,11 @@ export function StockClassSelect(props: {
   return (
     <FormControl size={size} sx={sx} disabled={disabled}>
       <InputLabel>{label}</InputLabel>
-      <Select label={label} value={value} onChange={(e) => onChange(e.target.value as StockClass)}>
+      <Select label={label} value={value} onChange={(e) => onChange(e.target.value as string)}>
         {props.items.map((m) => (
-          <MenuItem key={m.value} value={m.value}>{m.label}</MenuItem>
+          <MenuItem key={m.value} value={m.value}>
+            {m.label}
+          </MenuItem>
         ))}
       </Select>
     </FormControl>

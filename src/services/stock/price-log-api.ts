@@ -1,6 +1,6 @@
 import { loopbackApi } from './loopback-api';
 import type { Market } from '../../types/stock/ticker.types';
-import type { ChartSeriesResponse } from '../../types/stock/chart.type';
+import type { ChartSeriesResponse } from '../../types/stock/chart.types';
 
 export async function fetchChartSeries(params: {
   market: Market;

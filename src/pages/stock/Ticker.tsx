@@ -1,66 +1,84 @@
 import {
-  Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Stack,
-  Table, TableBody, TableCell, TableHead, TableRow, TextField, IconButton, Typography,
+  Box,
+  Button,
+  Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
+  TextField,
+  IconButton,
+  Typography,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import { useEffect, useMemo, useState } from 'react';
-import { searchSymbols } from '../../services/stock/ticker-api';
-
-
-import type { Market, StockClass, Bucket, TickerDTO, SymbolSuggestDTO } from '../../types/stock/ticker.types';
+import { createIndustryTag, getIndustryTags } from '../../services/stock/industry-tag-api';
+import type {
+  TickerDTO,
+  SymbolSuggestDTO,
+  FormState,
+  FilterState,
+} from '../../types/stock/ticker.types';
 import { useSnackbar } from '../../components/common/SnackbarProvider';
 import {
   createTicker,
   deleteTicker,
   listTickers,
+  searchSymbols,
   updateTicker,
 } from '../../services/stock/ticker-api';
 import StockShell from '../../components/stock/layout/StockShell';
-import { useTickerOptions } from '../../hooks/stock/useTickerOptions';
+import { useKeyValuePairs } from '../../hooks/stock/useKeyValuePairs';
+import { useStockExchanges } from '../../hooks/stock/useStockExchanges';
 import { SymbolAutosuggest } from '../../components/stock/ticker/SymbolAutosuggest';
 import { MarketSelect } from '../../components/stock/shared/MarketSelect';
 import { StockClassSelect } from '../../components/stock/shared/StockClassSelect';
 import { StockClassMultiSelect } from '../../components/stock/shared/StockClassMultiSelect';
 import { BucketSelect } from '../../components/stock/shared/BucketSelect';
+import {
+  getBucketItems,
+  getDefaultBucketValues,
+  getDefaultMarketValue,
+  getDefaultStockClassValue,
+  getMarketItemsFromExchanges,
+  getStockClassItems,
+} from '../../utils/stock/prepareDropdownOptions';
+import { IndustryTagsInput } from '../../components/stock/shared/IndustryTagsInput';
+import { BucketMultiSelect } from '../../components/stock/shared/BucketMultiSelect';
 
-type FilterState = {
-  market: Market;
-  stockClass: StockClass;
-};
-
-type FormState = {
-  symbol: string;
-  companyName: string;
-  market: Market;
-  stockClasses: StockClass[];
-  industry: string;
-  bucket: Bucket;
-};
-
-const DEFAULT_FORM: FormState = {
+const EMPTY_FORM: FormState = {
   symbol: '',
   companyName: '',
-  market: 'canada',
-  stockClasses: ['dividend'],
-  industry: '',
-  bucket: 'watch',
+  market: '',
+  stockClasses: [],
+  industryTags: [],
+  bucket: '',
 };
 
 export default function Ticker() {
   const { showSnackbar } = useSnackbar();
-  const { options, loading: optionsLoading } = useTickerOptions(true);
+
+  const keyValueIds = useMemo(() => ['stockClass', 'bucket'], []);
+  const { data: keyValuePairs, loading: pairsLoading } = useKeyValuePairs(keyValueIds);
+  const { data: exchanges, loading: exchangesLoading } = useStockExchanges(true);
 
   // Page state
-  const [filters, setFilters] = useState<FilterState>({ market: 'canada', stockClass: 'trade' });
+  const [filters, setFilters] = useState<FilterState>({ market: '', stockClass: '', buckets: [] });
   const [rows, setRows] = useState<TickerDTO[]>([]);
   const [loading, setLoading] = useState(false);
 
   // dialog state
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<TickerDTO | null>(null);
-  const [form, setForm] = useState<FormState>(DEFAULT_FORM);
+  const [form, setForm] = useState<FormState>(EMPTY_FORM);
 
   // autosugegst symbol state
   const [symbolInput, setSymbolInput] = useState('');
@@ -68,30 +86,40 @@ export default function Ticker() {
   const [symbolLoading, setSymbolLoading] = useState(false);
   const [selectedSymbol, setSelectedSymbol] = useState<SymbolSuggestDTO | null>(null);
 
-  // -------- Options helpers (key -> label) --------
-  const marketItems = useMemo(
-    () => (options ? Object.entries(options.market).map(([value, label]) => ({ value: value as Market, label })) : []),
-    [options]
-  );
+  const marketItems = useMemo(() => getMarketItemsFromExchanges(exchanges), [exchanges]);
+  const classItems = useMemo(() => getStockClassItems(keyValuePairs), [keyValuePairs]);
+  const bucketItems = useMemo(() => getBucketItems(keyValuePairs), [keyValuePairs]);
 
-  const classItems = useMemo(
-    () => (options ? Object.entries(options.stockClass).map(([value, label]) => ({ value: value as StockClass, label })) : []),
-    [options]
-  );
+  const [allTags, setAllTags] = useState<string[]>([]);
+  useEffect(()=>{
+    getIndustryTags().then(setAllTags).catch(()=>{});
+  },[])
 
-  const bucketItems = useMemo(
-    () => (options ? Object.entries(options.bucket).map(([value, label]) => ({ value: value as Bucket, label })) : []),
-    [options]
-  );
+  useEffect(() => {
+    if (!marketItems.length || !classItems.length || !bucketItems.length) return;
+    if (filters.market) return;
 
-  const marketLabel = (m: Market) => options?.market?.[m] ?? m;
-  const classLabel = (c: StockClass) => options?.stockClass?.[c] ?? c;
-  const bucketLabel = (b: Bucket) => options?.bucket?.[b] ?? b;
+    setFilters(({
+      // ...prev,
+      market: getDefaultMarketValue(marketItems),
+      stockClass: getDefaultStockClassValue(classItems),
+      buckets: bucketItems.map(b=>b.value)
+    }));
+  }, [marketItems, classItems, bucketItems, filters.market]);
+
+  
+
+  const marketLabel = (m: string) => marketItems.find((item) => item.value === m)?.label ?? m;
+  const classLabel = (c: string) => keyValuePairs?.stockClass?.[c] ?? c;
+  const bucketLabel = (b: string) => keyValuePairs?.bucket?.[b] ?? b;
 
   useEffect(() => {
     if (!open) return; // your dialog open boolean
     const q = symbolInput.trim();
-    if (!q) { setSymbolOptions([]); return; }
+    if (!q) {
+      setSymbolOptions([]);
+      return;
+    }
 
     const t = setTimeout(async () => {
       setSymbolLoading(true);
@@ -114,6 +142,7 @@ export default function Ticker() {
       const data = await listTickers({
         market: filters.market,
         stockClass: filters.stockClass,
+        buckets: filters.buckets.length ? filters.buckets : undefined,
       });
 
       setRows(data);
@@ -125,13 +154,19 @@ export default function Ticker() {
   };
 
   useEffect(() => {
+    if (!filters.market || !filters.stockClass) return;
     void fetchRows();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters.market, filters.stockClass]);
+  }, [filters.market, filters.stockClass, filters.buckets]);
 
   const openCreate = () => {
     setEditing(null);
-    setForm(DEFAULT_FORM);
+    setForm({
+      ...EMPTY_FORM,
+      market: getDefaultMarketValue(marketItems),
+      stockClasses: classItems.length ? [getDefaultStockClassValue(classItems)] : [],
+      bucket: getDefaultBucketValues(bucketItems)[0] ?? '',
+    });
     resetSymbolSearch();
     setOpen(true);
   };
@@ -141,19 +176,21 @@ export default function Ticker() {
     setForm({
       symbol: t.symbol,
       companyName: t.companyName,
-      market: t.market,
+      market: t.market || getDefaultMarketValue(marketItems),
       stockClasses: t.stockClasses,
-      industry: t.industry,
+      industryTags: t.industryTags ?? [],
       bucket: t.bucket,
     });
 
-    // make the autosuggest show the current symbol
-    setSelectedSymbol({
+    const toSelectedSymbol = (t: TickerDTO): SymbolSuggestDTO => ({
       symbolId: 0,
       symbol: t.symbol,
       description: t.companyName,
       lastPrice: null,
-    } as any);
+    });
+
+    // make the autosuggest show the current symbol
+    setSelectedSymbol(toSelectedSymbol(t));
     setSymbolInput(t.symbol);
     setSymbolOptions([]); // avoid showing stale search results
 
@@ -175,12 +212,15 @@ export default function Ticker() {
   const canSave = useMemo(() => {
     // Prevent saving while options are still loading (avoids invalid/default keys)
     return (
-      !optionsLoading &&
+      !pairsLoading &&
+      !exchangesLoading &&
       form.symbol.trim().length >= 1 &&
       form.companyName.trim().length >= 1 &&
-      form.stockClasses.length >= 1
+      form.market.trim().length >= 1 &&
+      form.stockClasses.length >= 1 &&
+      (form.bucket.trim().length ?? 0) >= 1 
     );
-  }, [form, optionsLoading]);
+  }, [form, pairsLoading, exchangesLoading]);
 
   const save = async () => {
     if (!canSave) return;
@@ -191,9 +231,13 @@ export default function Ticker() {
         companyName: form.companyName.trim(),
         market: form.market,
         stockClasses: form.stockClasses,
-        industry: form.industry,
+        industryTags: form.industryTags,
         bucket: form.bucket,
       };
+
+      for (const tag of form.industryTags ?? []) {
+        await createIndustryTag(tag).catch(() => {});
+      }
 
       if (!editing) {
         await createTicker(payload);
@@ -222,7 +266,7 @@ export default function Ticker() {
       showSnackbar('Delete failed', { severity: 'error' });
     }
   };
-
+  
   return (
     <StockShell>
       <Box>
@@ -240,33 +284,48 @@ export default function Ticker() {
         </Stack>
 
         {/* Filters */}
-        <Box
-          sx={{
-            mt: 2,
-            display: 'grid',
-            gap: 1.5,
-            gridTemplateColumns: { xs: '1fr 1fr', md: '180px 180px 1fr' },
-            alignItems: 'center',
-          }}
-        >
-          <MarketSelect
-            value={filters.market}
-            items={marketItems}
-            onChange={(v) => setFilters((p) => ({ ...p, market: v }))}
-            disabled={optionsLoading}
-          />
+            <Box
+              sx={{
+                mt: 2,
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: 1.5,
+                alignItems: 'center',
+              }}
+              >
+              <MarketSelect
+                value={marketItems.length ? filters.market : ''}
+                items={marketItems}
+                onChange={(v) => setFilters((p) => ({ ...p, market: v }))}
+                disabled={exchangesLoading}
+                sx={{ minWidth: 100 }}
+              />
 
-          <StockClassSelect
-            value={filters.stockClass}
-            items={classItems}
-            onChange={(v) => setFilters((p) => ({ ...p, stockClass: v }))}
-            disabled={optionsLoading}
-          />
+              <StockClassSelect
+                value={classItems.length ? filters.stockClass : ''}
+                items={classItems}
+                onChange={(v) => setFilters((p) => ({ ...p, stockClass: v }))}
+                disabled={pairsLoading}
+                sx={{ minWidth: 100 }}
+              />
 
-          <Box sx={{ justifySelf: { xs: 'start', md: 'end' }, opacity: 0.75 }}>
-            {loading ? 'Loading…' : `${rows.length} tickers`}
-          </Box>
-        </Box>
+              <BucketMultiSelect
+                value={bucketItems.length ? filters.buckets : []}
+                items={bucketItems}
+                onChange={(v) => {
+                  const newBuckets = v.length === 0? bucketItems.map(b=>b.value):v;
+                  setFilters((p) => ({ ...p, buckets: newBuckets}))
+                }}
+                disabled={pairsLoading}
+                sx={{ minWidth: 100 }}
+              />
+              <Box sx={{ 
+                ml: 'auto',
+                opacity: 0.75,
+              }}>
+                {loading ? 'Loading…' : `${rows.length} tickers`}
+              </Box>
+            </Box>
 
         {/* List */}
         <Box sx={{ mt: 2 }}>
@@ -296,7 +355,13 @@ export default function Ticker() {
                       ))}
                     </Stack>
                   </TableCell>
-                  <TableCell>{t.industry}</TableCell>
+                  <TableCell>
+                    <Stack direction="row" flexWrap="wrap" >
+                      {(t.industryTags ?? []).map((tag) => (
+                        <Chip key={tag} size="small" label={tag} sx={{m: 0.25}} />
+                      ))}
+                    </Stack>
+                  </TableCell>
                   <TableCell>{bucketLabel(t.bucket)}</TableCell>
                   <TableCell align="right">
                     <IconButton size="small" onClick={() => openEdit(t)} aria-label="Edit">
@@ -325,16 +390,13 @@ export default function Ticker() {
 
           <DialogContent sx={{ display: 'grid', gap: 1.5 }}>
             <MarketSelect
-              value={form.market}
+              value={marketItems.length ? form.market : ''}
               items={marketItems}
-              disabled={optionsLoading}
+              disabled={exchangesLoading}
               sx={{ mt: 1 }}
               onChange={(v) => {
                 setForm((p) => ({ ...p, market: v, symbol: '' }));
-
-                setSelectedSymbol(null);
-                setSymbolInput('');
-                setSymbolOptions([]);
+                resetSymbolSearch();
               }}
             />
 
@@ -342,7 +404,7 @@ export default function Ticker() {
               value={selectedSymbol}
               onChange={(opt) => {
                 setSelectedSymbol(opt);
-                setForm(p => ({
+                setForm((p) => ({
                   ...p,
                   symbol: opt?.symbol ?? '',
                   // auto-fill companyName only if empty
@@ -363,23 +425,22 @@ export default function Ticker() {
             />
 
             <StockClassMultiSelect
-              value={form.stockClasses}
+              value={classItems.length ? form.stockClasses : []}
               items={classItems}
               onChange={(next) => setForm((p) => ({ ...p, stockClasses: next }))}
-              disabled={optionsLoading}
+              disabled={pairsLoading}
             />
 
-            <TextField
-              size="small"
-              label="Industry"
-              value={form.industry}
-              onChange={(e) => setForm((p) => ({ ...p, industry: e.target.value }))}
+            <IndustryTagsInput
+              value={form.industryTags ?? []}
+              onChange={(tags) => setForm((p) => ({ ...p, industryTags: tags }))}
+              allTags={allTags}
             />
 
             <BucketSelect
-              value={form.bucket}
+              value={bucketItems.length ? form.bucket : ''}
               items={bucketItems}
-              disabled={optionsLoading}
+              disabled={pairsLoading}
               onChange={(v) => setForm((p) => ({ ...p, bucket: v }))}
             />
           </DialogContent>

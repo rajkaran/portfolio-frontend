@@ -1,13 +1,18 @@
 import { Box, IconButton, Tooltip, Typography } from '@mui/material';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import VolumeUpIcon from "@mui/icons-material/VolumeUp";
-import VolumeOffIcon from "@mui/icons-material/VolumeOff";
+import VolumeUpIcon from '@mui/icons-material/VolumeUp';
+import VolumeOffIcon from '@mui/icons-material/VolumeOff';
 
 import StockShell from '../../components/stock/layout/StockShell';
 import FilterBar from '../../components/stock/dashboard/FilterBar';
 import RightFavorableBar from '../../components/stock/dashboard/RightFavorableBar';
 import TickerGrid from '../../components/stock/dashboard/TickerGrid';
-import { defaultStockFilters, type BrokerId, type StockFilters, type TickerLatestDTO, type TickerOption } from '../../types/stock/ticker.types';
+import {
+  defaultStockFilters,
+  type StockFilters,
+  type TickerLatestDTO,
+  type TickerOption,
+} from '../../types/stock/ticker.types';
 import { applyFilters } from '../../utils/stock/filter';
 import TickerCardTooltip from '../../components/stock/dashboard/TickerDetailTooltip';
 import { listTickerLatest } from '../../services/stock/ticker-api';
@@ -18,20 +23,34 @@ import { useSnackbar } from '../../components/common/SnackbarProvider';
 import type { ThresholdKey } from '../../constants/stockUI';
 import { CreateTradeDialog } from '../../components/stock/shared/CreateTradeDialog';
 import type { TradeType, TradeWsMsg } from '../../types/stock/trade.types';
-import { useTickerOptions } from '../../hooks/stock/useTickerOptions';
 import { derivePositionFields, pickDefaultBroker } from '../../utils/stock/DashboardUtil';
-import type { BrokerItem } from '../../components/stock/shared/BrokerSelect';
 import { compareBySort, isFavorable } from '../../utils/stock/tickerSorting';
 import { enableSound, playChime } from '../../utils/stock/chimes';
+import { useKeyValuePairs } from '../../hooks/stock/useKeyValuePairs';
+import {
+  getBrokerItems,
+  getBrokerLabels,
+  getDefaultMarketValue,
+  getDefaultStockClassValue,
+  getMarketItemsFromExchanges,
+  getStockClassItems,
+} from '../../utils/stock/prepareDropdownOptions';
+import { useStockExchanges } from '../../hooks/stock/useStockExchanges';
+import { useBrokerAccounts } from '../../hooks/stock/useBrokerAccounts';
+import CollapsibleTopBar from '../../layouts/stock/CollapsibleTopBar';
 
 const toIso = (v: string | Date | null | undefined) =>
-  !v ? null : (typeof v === 'string' ? new Date(v).toISOString() : v.toISOString());
+  !v ? null : typeof v === 'string' ? new Date(v).toISOString() : v.toISOString();
 
-type ChimeKey = "green" | "cyan" | "orange" | "red";
+type ChimeKey = 'green' | 'cyan' | 'orange' | 'red';
 
 export default function Dashboard() {
   const { showSnackbar } = useSnackbar();
-  const { options } = useTickerOptions(true);
+
+  const keyValueIds = useMemo(() => ['stockClass'], []);
+  const { data: keyValuePairs } = useKeyValuePairs(keyValueIds);
+  const { data: exchanges } = useStockExchanges(true);
+  const { data: brokerAccounts } = useBrokerAccounts(true);
 
   const [filters, setFilters] = useState(defaultStockFilters);
   const [zoomTickerId, setZoomTickerId] = useState<string | null>(null);
@@ -47,6 +66,7 @@ export default function Dashboard() {
   const [tradeOpen, setTradeOpen] = useState(false);
   const [tradeTickerId, setTradeTickerId] = useState<string | null>(null);
   const [tradeSide, setTradeSide] = useState<'buy' | 'sell'>('buy');
+  const [tradeSpecificBrokerId, setTradeSpecificBrokerId] = useState<string | null>(null);
 
   // last seen lastPrice per symbol
   const lastPriceRef = useRef<Record<string, number>>({});
@@ -56,6 +76,13 @@ export default function Dashboard() {
 
   // per symbol “armed state” (true means we’ve already rung for current side)
   const chimeStateRef = useRef<Record<string, Partial<Record<ChimeKey, boolean>>>>({});
+
+  const stockClassRef = useRef<string>(filters.stockClass);
+
+  const brokerAccountsRef = useRef(brokerAccounts);
+  useEffect(()=>{
+    brokerAccountsRef.current = brokerAccounts;
+  },[brokerAccounts])
 
   // TODO: add a page to record dividends.
   // TODO: create dividend tiles and notifications through emails
@@ -74,29 +101,32 @@ export default function Dashboard() {
         symbol: t.symbol,
         companyName: t.companyName,
         bucket: t.bucket,
+        positionsByBrokerAccount: t.positionsByBrokerAccount,
       })),
-    [tickers]
+    [tickers],
   );
 
-  // known brokers
-  const brokerItems: BrokerItem[] = useMemo(() => {
-    if (!options?.broker) return [];
-    return Object.entries(options.broker).map(([value, label]) => ({
-      value: value as BrokerId,
-      label: String(label),
-    }));
-  }, [options]);
+  const brokerItems = useMemo(() => getBrokerItems(brokerAccounts, filters.stockClass, true), [brokerAccounts, filters.stockClass]);
+  const brokerLabels = useMemo(() => getBrokerLabels(brokerAccounts), [brokerAccounts]);
+  const marketItems = useMemo(() => getMarketItemsFromExchanges(exchanges), [exchanges]);
+  const classItems = useMemo(() => getStockClassItems(keyValuePairs), [keyValuePairs]);
 
-  const brokerLabels = useMemo(() => {
-    const m = {} as Record<BrokerId, string>;
-    for (const [value, label] of Object.entries(options?.broker ?? {})) {
-      m[value as BrokerId] = String(label);
-    }
-    return m;
-  }, [options]);
+  // set default filters with fetched market and stockclass
+  useEffect(() => {
+    if (!marketItems.length || !classItems.length) return;
+    if (filters.market && filters.stockClass) return;
+
+    setFilters((prev) => ({
+      ...prev,
+      market: prev.market || getDefaultMarketValue(marketItems),
+      stockClass: prev.stockClass || getDefaultStockClassValue(classItems),
+    }));
+  }, [filters.market, filters.stockClass, marketItems, classItems]);
 
   // ---- initial fetch
   useEffect(() => {
+    if (!filters.market || !filters.stockClass) return;
+
     let cancelled = false;
 
     (async () => {
@@ -108,12 +138,12 @@ export default function Dashboard() {
       for (const raw of rows as TickerLatestDTO[]) {
         const normalized: TickerLatestDTO = {
           ...raw,
-          positionsByBroker: raw.positionsByBroker ?? {},
+          positionsByBrokerAccount: raw.positionsByBrokerAccount ?? {},
           updateDatetime: toIso(raw.updateDatetime),
           tradeDatetime: toIso(raw.tradeDatetime),
         };
 
-        const selected = normalized.uiSelectedBroker ?? pickDefaultBroker(normalized);
+        const selected = normalized.uiSelectedBroker ?? pickDefaultBroker(normalized, brokerAccounts ?? [], filters.stockClass);
         const derived = derivePositionFields(normalized, selected);
 
         map.set(normalized.symbol, {
@@ -153,13 +183,13 @@ export default function Dashboard() {
           };
 
           // recompute totalReturn based on selected broker snapshot (derived fields)
-          const selected = updated.uiSelectedBroker ?? pickDefaultBroker(updated);
+          const selected = updated.uiSelectedBroker ?? pickDefaultBroker(updated, brokerAccounts ?? [], stockClassRef.current);
           updated.uiSelectedBroker = selected;
           Object.assign(updated, derivePositionFields(updated, selected));
 
           // --- Chime logic (re-armable crossings) ---
           // Only run if we have a numeric new price this tick.
-          const nextPrice = typeof updated.lastPrice === "number" ? updated.lastPrice : null;
+          const nextPrice = typeof updated.lastPrice === 'number' ? updated.lastPrice : null;
           if (nextPrice != null) {
             const sym = updated.symbol;
             const prevPrice = lastPriceRef.current[sym];
@@ -167,11 +197,13 @@ export default function Dashboard() {
             // skip first observation (no initial chimes)
             const isInitialized = initializedRef.current[sym] === true;
 
-            if (soundEnabled && isInitialized && typeof prevPrice === "number") {
-              const green = typeof updated.thresholdGreen === "number" ? updated.thresholdGreen : null;
-              const cyan = typeof updated.thresholdCyan === "number" ? updated.thresholdCyan : null;
-              const orange = typeof updated.thresholdOrange === "number" ? updated.thresholdOrange : null;
-              const red = typeof updated.thresholdRed === "number" ? updated.thresholdRed : null;
+            if (soundEnabled && isInitialized && typeof prevPrice === 'number') {
+              const green =
+                typeof updated.thresholdGreen === 'number' ? updated.thresholdGreen : null;
+              const cyan = typeof updated.thresholdCyan === 'number' ? updated.thresholdCyan : null;
+              const orange =
+                typeof updated.thresholdOrange === 'number' ? updated.thresholdOrange : null;
+              const red = typeof updated.thresholdRed === 'number' ? updated.thresholdRed : null;
 
               const st = (chimeStateRef.current[sym] ??= {});
 
@@ -184,11 +216,11 @@ export default function Dashboard() {
 
               // precedence: green first, then cyan
               if (crossedUpGreen) {
-                playChime("green");
+                playChime('green');
                 st.green = true;
                 st.cyan = true; // above green implies above cyan (avoid later cyan ding)
               } else if (crossedUpCyan) {
-                playChime("cyan");
+                playChime('cyan');
                 st.cyan = true;
               }
 
@@ -197,19 +229,18 @@ export default function Dashboard() {
               if (cyan != null && nextPrice < cyan) st.cyan = false;
 
               // ----- BUY thresholds: ring only on downward cross -----
-              const crossedDownRed =
-                red != null && prevPrice > red && nextPrice <= red && !st.red;
+              const crossedDownRed = red != null && prevPrice > red && nextPrice <= red && !st.red;
 
               const crossedDownOrange =
                 orange != null && prevPrice > orange && nextPrice <= orange && !st.orange;
 
               // precedence: red first, then orange
               if (crossedDownRed) {
-                playChime("red");
+                playChime('red');
                 st.red = true;
                 st.orange = true; // below red implies below orange (avoid later orange ding)
               } else if (crossedDownOrange) {
-                playChime("orange");
+                playChime('orange');
                 st.orange = true;
               }
 
@@ -237,27 +268,42 @@ export default function Dashboard() {
 
           const next = new Map(prev);
 
-          const broker = m.patch.broker; // BrokerId
-          const prevPos = existing.positionsByBroker ?? {};
+          const broker = m.patch.brokerAccountId;
+          const prevPos = existing.positionsByBrokerAccount ?? {};
           const prevSnap = prevPos[broker] ?? {};
 
           // apply patch
           const nextSnap = {
             ...prevSnap,
-            ...(m.patch.avgBookCost !== undefined ? { avgBookCost: m.patch.avgBookCost ?? null } : {}),
-            ...(m.patch.quantityHolding !== undefined ? { quantityHolding: m.patch.quantityHolding ?? null } : {}),
+            ...(m.patch.avgBookCost !== undefined
+              ? { avgBookCost: m.patch.avgBookCost ?? null }
+              : {}),
+            ...(m.patch.quantityHolding !== undefined
+              ? { quantityHolding: m.patch.quantityHolding ?? null }
+              : {}),
           };
 
           const updated: TickerLatestDTO = {
             ...existing,
-            positionsByBroker: {
+            positionsByBrokerAccount: {
               ...prevPos,
               [broker]: nextSnap,
             },
           };
 
           // keep selection stable, but ensure it exists
-          const selected = updated.uiSelectedBroker ?? pickDefaultBroker(updated);
+          let selected = updated.uiSelectedBroker;
+
+          // Get the current quantity of the selected broker 
+          const currentQty = selected ? (updated.positionsByBrokerAccount?.[selected]?.quantityHolding ?? 0) : 0;
+
+          //If no selection exists, OR if current broker dropped to 0 units(after a sell)
+          if(!selected || currentQty <= 0) {
+            //Find the next available broker based on priority
+
+            //if the next available broker ALSO has 0 units, clear the selection entirely
+            selected = pickDefaultBroker(updated, brokerAccountsRef.current ?? [], stockClassRef.current);
+          }
           updated.uiSelectedBroker = selected;
 
           // If selected broker changed in the event OR selection was missing, recompute derived fields.
@@ -275,9 +321,7 @@ export default function Dashboard() {
 
   const visibleTickers = useMemo(() => {
     const filtered = applyFilters(tickers, filters);
-    return [...filtered].sort((a, b) =>
-      compareBySort(a, b, filters.sortBy, { silencedById })
-    );
+    return [...filtered].sort((a, b) => compareBySort(a, b, filters.sortBy, { silencedById }));
   }, [tickers, filters, silencedById]);
 
   const toggleSilenced = useCallback((tickerId: string) => {
@@ -286,13 +330,18 @@ export default function Dashboard() {
 
   // Persist silences across refresh
   useEffect(() => {
-    const raw = localStorage.getItem("silencedById");
+    const raw = localStorage.getItem('silencedById');
     if (raw) setSilencedById(JSON.parse(raw));
   }, []);
 
   useEffect(() => {
-    localStorage.setItem("silencedById", JSON.stringify(silencedById));
+    localStorage.setItem('silencedById', JSON.stringify(silencedById));
   }, [silencedById]);
+
+  //Stockclassref sync
+  useEffect(() => {
+    stockClassRef.current = filters.stockClass;
+  }, [filters.stockClass]);
 
   const toggleSound = async () => {
     if (soundEnabled) {
@@ -305,16 +354,16 @@ export default function Dashboard() {
       await enableSound();
       setSoundEnabled(true);
       // optional confirmation chirp
-      playChime("cyan");
+      playChime('cyan');
     } catch (e) {
-      console.error("Failed to enable sound", e);
+      console.error('Failed to enable sound', e);
     }
   };
 
   const favorableTickers = useMemo(() => {
     const fav = tickers
-      .filter(t => isFavorable(t, { silencedBuy: !!silencedById[t.id] }))
-      .sort((a, b) => compareBySort(a, b, "favorability", { silencedById }));
+      .filter((t) => isFavorable(t, { silencedBuy: !!silencedById[t.id] }))
+      .sort((a, b) => compareBySort(a, b, 'favorability', { silencedById }));
 
     // Cap the Favorable bar list (so it doesn’t become an infinite scroll on wild days):
     return fav.slice(0, 20);
@@ -333,7 +382,7 @@ export default function Dashboard() {
   const zoomTicker = useMemo(() => {
     if (!zoomTickerId) return null;
     return visibleTickers.find((t) => t.id === zoomTickerId) ?? null;
-  }, [zoomTickerId, visibleTickers])
+  }, [zoomTickerId, visibleTickers]);
 
   const onZoom = (id: string, anchorEl: HTMLElement | null) => {
     setZoomTickerId(id);
@@ -345,7 +394,7 @@ export default function Dashboard() {
     setZoomAnchorEl(null);
   };
 
-  const onSelectBroker = useCallback((tickerSymbol: string, broker: BrokerId) => {
+  const onSelectBroker = useCallback((tickerSymbol: string, brokerAccountId: string) => {
     setTickerMap((prev) => {
       const existing = prev.get(tickerSymbol);
       if (!existing) return prev;
@@ -353,8 +402,8 @@ export default function Dashboard() {
       const next = new Map(prev);
       const updated: TickerLatestDTO = {
         ...existing,
-        uiSelectedBroker: broker,
-        ...derivePositionFields(existing, broker),
+        uiSelectedBroker: brokerAccountId,
+        ...derivePositionFields(existing, brokerAccountId),
       };
 
       next.set(tickerSymbol, updated);
@@ -362,15 +411,17 @@ export default function Dashboard() {
     });
   }, []);
 
-  const openQuickTrade = useCallback((tickerId: string, side: 'buy' | 'sell') => {
+  const openQuickTrade = useCallback((tickerId: string, side: 'buy' | 'sell', specificBrokerId?:string) => {
     setTradeTickerId(tickerId);
     setTradeSide(side);
+    setTradeSpecificBrokerId(specificBrokerId ?? null);
     setTradeOpen(true);
   }, []);
 
   const closeQuickTrade = useCallback(() => {
     setTradeOpen(false);
     setTradeTickerId(null);
+    setTradeSpecificBrokerId(null);
   }, []);
 
   const onChangeThreshold = async (tickerId: string, key: ThresholdKey, value: number) => {
@@ -418,11 +469,12 @@ export default function Dashboard() {
   return (
     <StockShell
       right={({ closeRight }) => (
+        // TODO: after fixing the position by broker, adjust the selected broker in TickerCard.
         <RightFavorableBar
           onClose={closeRight}
           tickers={favorableTickers}
           brokerLabels={brokerLabels}
-          onTrade={(tickerId, side) => openQuickTrade(tickerId, side)}
+          onTrade={(tickerId:string, side: TradeType, specificBrokerId?: string) => openQuickTrade(tickerId, side, specificBrokerId)}
           onChangeThreshold={onChangeThreshold}
           onSelectBroker={onSelectBroker}
           silencedById={silencedById}
@@ -430,46 +482,43 @@ export default function Dashboard() {
         />
       )}
     >
-      <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', mb: 1 }}>
-        <Typography variant="h5" sx={{ fontWeight: 500 }}>
-          Dashboard
+      <CollapsibleTopBar
+  title={
+    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <span>Dashboard</span>
+      <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75 }}>
+        <Tooltip title={soundEnabled ? 'Sound: ON (click to mute)' : 'Sound: OFF (click to enable)'}>
+          <IconButton size="small" onClick={toggleSound} sx={{ p: 0.25 }}>
+            {soundEnabled ? <VolumeUpIcon fontSize="small" /> : <VolumeOffIcon fontSize="small" />}
+          </IconButton>
+        </Tooltip>
+        <Typography variant="body2" sx={{ opacity: 0.8 }}>
+          WS: {wsConnected ? 'connected' : 'disconnected'}
         </Typography>
-        <Box sx={{ display: "inline-flex", alignItems: "center", gap: 0.75 }}>
-          <Tooltip title={soundEnabled ? "Sound: ON (click to mute)" : "Sound: OFF (click to enable)"}>
-            <IconButton
-              size="small"
-              onClick={toggleSound}
-              aria-label={soundEnabled ? "Disable sound" : "Enable sound"}
-              sx={{ p: 0.25 }}
-            >
-              {soundEnabled ? <VolumeUpIcon fontSize="small" /> : <VolumeOffIcon fontSize="small" />}
-            </IconButton>
-          </Tooltip>
-
-          <Typography variant="body2" sx={{ opacity: 0.8 }}>
-            WS: {wsConnected ? "connected" : "disconnected"}
-          </Typography>
-        </Box>
       </Box>
-
-      <Box>
-        <FilterBar value={filters} onChange={onFiltersChange} tickers={tickers} />
-      </Box>
-
+    </Box>
+  }
+>
+  <FilterBar value={filters} onChange={onFiltersChange} tickers={tickers} />
+</CollapsibleTopBar>
       <TickerGrid
         tickers={visibleTickers}
         brokerLabels={brokerLabels}
         onZoom={onZoom}
-        onTrade={(tickerId: string, side: TradeType) => openQuickTrade(tickerId, side)}
+        onTrade={(tickerId: string, side: TradeType, specificBrokerId?: string) => openQuickTrade(tickerId, side, specificBrokerId)}
         onChangeThreshold={onChangeThreshold}
         onSelectBroker={onSelectBroker}
         silencedById={silencedById}
         onToggleSilence={toggleSilenced}
       />
-
-      <TickerCardTooltip open={Boolean(zoomTickerId)} anchorEl={zoomAnchorEl} ticker={zoomTicker} onClose={closeZoom} />
-
+      <TickerCardTooltip
+        open={Boolean(zoomTickerId)}
+        anchorEl={zoomAnchorEl}
+        ticker={zoomTicker}
+        onClose={closeZoom}
+      />
       {/* Quick trade dialog */}
+      {/* TODO: after fixing the position by broker, adjust the selected broker in TickerCard. */}
       <CreateTradeDialog
         open={tradeOpen}
         onClose={closeQuickTrade}
@@ -478,8 +527,12 @@ export default function Dashboard() {
         brokerItems={brokerItems}
         fixedTickerId={tradeTickerId ?? undefined}
         presetType={tradeSide}
+        selectedClass={filters.stockClass}
+        defaultBrokerAccountId={
+          tradeSpecificBrokerId || 
+          (tradeTickerId? tickerMap.get(tradeTickerId)?.uiSelectedBroker : undefined)
+        }
       />
-
     </StockShell>
   );
 }

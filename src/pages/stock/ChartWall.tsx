@@ -1,22 +1,29 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Box, Typography } from '@mui/material';
-
 import StockShell from '../../components/stock/layout/StockShell';
-import type { Bucket, Market, StockClass, TickerDTO, TickerOption } from '../../types/stock/ticker.types';
 import type { PriceUpdateDTO } from '../../types/stock/price-update.types';
-
 import { listTickers } from '../../services/stock/ticker-api';
 import { fetchChartSeries } from '../../services/stock/price-log-api';
 import { connectPricesWs } from '../../services/stock/prices-ws';
-
 import { ChartWallControls } from '../../components/stock/chartwall/ChartWallControls';
 import { ChartWallTabs } from '../../components/stock/chartwall/ChartWallTabs';
 import { ChartGrid } from '../../components/stock/chartwall/ChartGrid';
-
 import { buildChartWallQueryString, readChartWallQuery } from '../../utils/stock/chartwallUrl';
-import type { Latest, PerTab, RotateSec } from '../../types/stock/chart.type';
+import type { Latest, PerTab, RotateSec } from '../../types/stock/chart.types';
 import { isDefined } from '../../utils/stock/filter';
 import { marketTz, nextMarketOpenDate } from '../../utils/stock/ChartTileUPlot';
+import { useKeyValuePairs } from '../../hooks/stock/useKeyValuePairs';
+import { useStockExchanges } from '../../hooks/stock/useStockExchanges';
+import type { TickerDTO, TickerOption } from '../../types/stock/ticker.types';
+import {
+  getBucketItems,
+  getDefaultBucketValues,
+  getDefaultMarketValue,
+  getDefaultStockClassValue,
+  getMarketItemsFromExchanges,
+  getStockClassItems,
+} from '../../utils/stock/prepareDropdownOptions';
+import CollapsibleTopBar from '../../layouts/stock/CollapsibleTopBar';
 
 function chunk<T>(arr: T[], size: number): T[][] {
   if (size <= 0) return [arr];
@@ -56,9 +63,9 @@ export default function ChartWall() {
   const [allTickers, setAllTickers] = useState<TickerDTO[]>([]);
   const [loadingTickers, setLoadingTickers] = useState(false);
 
-  const [market, setMarket] = useState<Market>('canada');
-  const [stockClass, setStockClass] = useState<StockClass>('trade');
-  const [buckets, setBuckets] = useState<Bucket[]>(['core']);
+  const [market, setMarket] = useState('');
+  const [stockClass, setStockClass] = useState('');
+  const [buckets, setBuckets] = useState<string[]>([]);
 
   const [selectedSymbols, setSelectedSymbols] = useState<string[]>([]);
   const [perTab, setPerTab] = useState<PerTab>(2);
@@ -71,14 +78,26 @@ export default function ChartWall() {
   const [loadedTz, setLoadedTz] = useState('');
   const [openTick, setOpenTick] = useState(0);
 
+  const [topBarOpen, setTopBarOpen] = useState(true);
+
   const [wsConnected, setWsConnected] = useState(false);
+
+  const keyValueIds = useMemo(() => ['stockClass', 'bucket'], []);
+  const { data: keyValuePairs, loading: pairsLoading } = useKeyValuePairs(keyValueIds);
+  const { data: exchanges, loading: exchangesLoading } = useStockExchanges(true);
+
+  const marketItems = useMemo(() => getMarketItemsFromExchanges(exchanges), [exchanges]);
+  const classItems = useMemo(() => getStockClassItems(keyValuePairs), [keyValuePairs]);
+  const bucketItems = useMemo(() => getBucketItems(keyValuePairs), [keyValuePairs]);
+
+  const optionsReady = Boolean(marketItems.length && classItems.length && bucketItems.length);
 
   // ---- read URL on mount ----
   useEffect(() => {
     const initial = readChartWallQuery({
-      market: 'canada',
-      stockClass: 'trade',
-      buckets: ['core'],
+      market: '',
+      stockClass: '',
+      buckets: [],
       symbols: [],
       perTab: 2,
       rotateSec: 10,
@@ -101,6 +120,15 @@ export default function ChartWall() {
     return () => window.clearTimeout(id);
   }, []);
 
+  useEffect(() => {
+    if (!optionsReady) return;
+    if (market && stockClass && buckets.length) return;
+
+    setMarket((prev) => prev || getDefaultMarketValue(marketItems));
+    setStockClass((prev) => prev || getDefaultStockClassValue(classItems));
+    setBuckets((prev) => (prev.length ? prev : getDefaultBucketValues(bucketItems)));
+  }, [optionsReady, market, stockClass, buckets, marketItems, classItems, bucketItems]);
+
   // ---- sync URL on changes ----
   useEffect(() => {
     if (!hydrated) return;
@@ -120,13 +148,28 @@ export default function ChartWall() {
     if (current === qs) return; // idempotent under StrictMode
 
     window.history.replaceState(null, '', `${window.location.pathname}?${qs}`);
-  }, [hydrated, market, stockClass, buckets, selectedSymbols, perTab, rotateSec, rotateOn, activeTab]);
+  }, [
+    hydrated,
+    market,
+    stockClass,
+    buckets,
+    selectedSymbols,
+    perTab,
+    rotateSec,
+    rotateOn,
+    activeTab,
+  ]);
 
   // ---- load tickers list for dropdown ----
   useEffect(() => {
+    if (!market || !stockClass) return;
+
     const key = `${market}|${stockClass}`;
     const cached = tickerCacheRef.current.get(key);
-    if (cached) { setAllTickers(cached); return; }
+    if (cached) {
+      setAllTickers(cached);
+      return;
+    }
 
     let alive = true;
     setLoadingTickers(true);
@@ -188,7 +231,7 @@ export default function ChartWall() {
 
         // notify tiles to redraw
         const seriesSubs = seriesSubsRef.current.get(u.symbol);
-        if (seriesSubs) seriesSubs.forEach(fn => fn());
+        if (seriesSubs) seriesSubs.forEach((fn) => fn());
       },
     });
 
@@ -241,12 +284,15 @@ export default function ChartWall() {
 
   // ---- filtering for dropdown ----
   const filteredTickers = useMemo(() => {
-    return allTickers.filter((t) => {
-      if (t.market !== market) return false;
-      if (!t.stockClasses?.includes(stockClass as any)) return false;
-      if (!buckets.includes(t.bucket)) return false;
-      return true;
-    })
+    if (!market || !stockClass || !buckets.length) return [];
+
+    return allTickers
+      .filter((t) => {
+        if (t.market !== market) return false;
+        if (!t.stockClasses?.includes(stockClass)) return false;
+        if (!buckets.includes(t.bucket)) return false;
+        return true;
+      })
       .map(toOption);
   }, [allTickers, market, stockClass, buckets]);
 
@@ -260,18 +306,21 @@ export default function ChartWall() {
     // (could be transient while user is switching filters)
     if (filteredTickers.length === 0) return;
 
-    const allowed = new Set(filteredTickers.map(t => t.symbol));
-    setSelectedSymbols(prev => prev.filter(sym => allowed.has(sym)));
+    const allowed = new Set(filteredTickers.map((t) => t.symbol));
+    setSelectedSymbols((prev) => prev.filter((sym) => allowed.has(sym)));
   }, [hydrated, loadingTickers, allTickers.length, filteredTickers]);
 
   // Selecting tickers
   const selectedTickers = useMemo(() => {
-    const bySym = new Map(allTickers.map(t => [t.symbol, t]));
-    return selectedSymbols.map(s => bySym.get(s)).filter(isDefined).map(toOption);
+    const bySym = new Map(allTickers.map((t) => [t.symbol, t]));
+    return selectedSymbols
+      .map((s) => bySym.get(s))
+      .filter(isDefined)
+      .map(toOption);
   }, [selectedSymbols, allTickers]);
 
   const onSelectedTickers = (tickers: TickerOption[]) => {
-    setSelectedSymbols(tickers.map(t => t.symbol));
+    setSelectedSymbols(tickers.map((t) => t.symbol));
   };
 
   // ---- tabs / visible symbols ----
@@ -320,7 +369,7 @@ export default function ChartWall() {
           seriesRef.current.set(s.symbol, { t: s.t, v: s.v });
 
           const subs = seriesSubsRef.current.get(s.symbol);
-          if (subs) subs.forEach(fn => fn());
+          if (subs) subs.forEach((fn) => fn());
         }
       } finally {
         for (const s of missing) inFlightRef.current.delete(s);
@@ -397,38 +446,47 @@ export default function ChartWall() {
 
   return (
     <StockShell>
-      <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', mb: 1 }}>
-        <Typography variant="h5" sx={{ fontWeight: 500 }}>
-          Stock Wall
-        </Typography>
-        <Typography variant="body2" sx={{ opacity: 0.8 }}>
-          WS: {wsConnected ? 'connected' : 'disconnected'}
-        </Typography>
-      </Box>
+      <CollapsibleTopBar 
+        title={
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span>Stock Wall</span>
+            <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75 }}>
+              <Typography variant="body2" sx={{ opacity: 0.8 }}>
+                WS: {wsConnected ? 'connected' : 'disconnected'}
+              </Typography>
+            </Box>
+          </Box>
+        }
+        onOpenChange={setTopBarOpen}
+      >
+        <ChartWallControls
+          market={market}
+          onMarket={setMarket}
+          stockClass={stockClass}
+          onStockClass={setStockClass}
+          buckets={buckets}
+          onBuckets={setBuckets}
+          marketItems={marketItems}
+          classItems={classItems}
+          bucketItems={bucketItems}
+          perTab={perTab}
+          onPerTab={setPerTab}
+          rotateOn={rotateOn}
+          onRotateOn={setRotateOn}
+          rotateSec={rotateSec}
+          onRotateSec={setRotateSec}
+          filteredTickers={filteredTickers}
+          selectedTickers={selectedTickers}
+          onSelectedTickers={onSelectedTickers}
+          loadingTickers={loadingTickers}
+          loadingOptions={pairsLoading || exchangesLoading}
+        />
 
-      <ChartWallControls
-        market={market}
-        onMarket={setMarket}
-        stockClass={stockClass}
-        onStockClass={setStockClass}
-        buckets={buckets}
-        onBuckets={setBuckets}
-        perTab={perTab}
-        onPerTab={setPerTab}
-        rotateOn={rotateOn}
-        onRotateOn={setRotateOn}
-        rotateSec={rotateSec}
-        onRotateSec={setRotateSec}
-        filteredTickers={filteredTickers}
-        selectedTickers={selectedTickers}
-        onSelectedTickers={onSelectedTickers}
-        loadingTickers={loadingTickers}
-      />
-
-      <Typography variant="body2" sx={{ opacity: 0.85, mb: 1 }}>
-        Loaded day: <b>{formatLoadedDay(loadedDay, loadedTz || 'UTC')}</b>
-        {loadedTz ? ` (${loadedTz})` : ''}
-      </Typography>
+        <Typography variant="body2" sx={{ opacity: 0.85, mb: 1 }}>
+          Loaded day: <b>{formatLoadedDay(loadedDay, loadedTz || 'UTC')}</b>
+          {loadedTz ? ` (${loadedTz})` : ''}
+        </Typography>
+      </CollapsibleTopBar>
 
       <ChartWallTabs count={tabs.length} active={activeTab} onChange={setActiveTab} />
 
@@ -440,6 +498,7 @@ export default function ChartWall() {
         getSeries={getSeries}
         subscribeLatest={subscribeLatest}
         subscribeSeries={subscribeSeries}
+        topBarOpen={topBarOpen}
       />
     </StockShell>
   );

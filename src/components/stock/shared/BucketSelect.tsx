@@ -1,8 +1,8 @@
 import { FormControl, InputLabel, MenuItem, Select } from '@mui/material';
 import type { SxProps, Theme } from '@mui/material/styles';
-import type { Bucket } from '../../../types/stock/ticker.types';
+import type{ DropdownItem } from '../../../utils/stock/prepareDropdownOptions';
 
-const DEFAULT_ITEMS: { value: Bucket; label: string }[] = [
+const DEFAULT_ITEMS: DropdownItem[] = [
   { value: 'core', label: 'Core' },
   { value: 'watch', label: 'Watch' },
   { value: 'once', label: 'Once' },
@@ -10,9 +10,9 @@ const DEFAULT_ITEMS: { value: Bucket; label: string }[] = [
 ];
 
 export function BucketSelect(props: {
-  value: Bucket;
-  onChange: (v: Bucket) => void;
-  items: { value: Bucket; label: string }[];
+  value: string;
+  onChange: (v: string) => void;
+  items: DropdownItem[];
   label?: string;
   size?: 'small' | 'medium';
   disabled?: boolean;
@@ -24,7 +24,7 @@ export function BucketSelect(props: {
   return (
     <FormControl size={size} sx={sx} disabled={disabled}>
       <InputLabel>{label}</InputLabel>
-      <Select label={label} value={value} onChange={(e) => onChange(e.target.value as Bucket)}>
+      <Select label={label} value={value} onChange={(e) => onChange(e.target.value)}>
         {list.map((b) => (
           <MenuItem key={b.value} value={b.value}>
             {b.label}

@@ -16,37 +16,28 @@ import {
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import RefreshOutlinedIcon from '@mui/icons-material/RefreshOutlined';
-
 import StockShell from '../../components/stock/layout/StockShell';
 import { useSnackbar } from '../../components/common/SnackbarProvider';
-
 import { listTickerLatest } from '../../services/stock/ticker-api';
 import { deleteTrade, countTrades, listTradesPaged } from '../../services/stock/trade-api';
-
 import type { TradeDTO, TradeType, TradeWsMsg } from '../../types/stock/trade.types';
-import type { BrokerId, Bucket, TickerOption } from '../../types/stock/ticker.types';
-
-import { useTickerOptions } from '../../hooks/stock/useTickerOptions';
 import { CreateTradeDialog } from '../../components/stock/shared/CreateTradeDialog';
 import { TickerAutosuggest } from '../../components/stock/shared/TickerAutosuggest';
-import { BrokerSelect, type BrokerItem } from '../../components/stock/shared/BrokerSelect';
-
+import { BrokerSelect } from '../../components/stock/shared/BrokerSelect';
 import { connectPricesWs } from '../../services/stock/prices-ws';
-
-type TickerLite = {
-  id: string;
-  symbol: string;
-  companyName?: string;
-  bucket?: Bucket;
-};
-
-const DEFAULT_BROKER: BrokerId = 'wealthsimple';
+import type { TickerOption } from '../../types/stock/ticker.types';
+import { useBrokerAccounts } from '../../hooks/stock/useBrokerAccounts';
+import {
+  getBrokerItems,
+  getBrokerLabels,
+  getDefaultBrokerAccountId,
+} from '../../utils/stock/prepareDropdownOptions';
 
 export default function Trade() {
   const { showSnackbar } = useSnackbar();
-  const { options, loading: optionsLoading } = useTickerOptions(true);
+  const { data: brokerAccounts, loading: brokerAccountsLoading } = useBrokerAccounts(true);
 
-  const [tickers, setTickers] = useState<TickerLite[]>([]);
+  const [tickers, setTickers] = useState<TickerOption[]>([]);
 
   const [rows, setRows] = useState<TradeDTO[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -55,8 +46,8 @@ export default function Trade() {
 
   // filters
   const [filterSymbols, setFilterSymbols] = useState<string[]>([]);
-  const [filterType, setFilterType] = useState<TradeType | ''>('');
-  const [filterBroker, setFilterBroker] = useState<BrokerId | ''>(''); // '' = All
+  const [filterType, setFilterType] = useState<TradeType | 'all'>('all');
+  const [filterBrokerAccountId, setFilterBrokerAccountId] = useState('all');
 
   // dialog
   const [open, setOpen] = useState(false);
@@ -76,19 +67,13 @@ export default function Trade() {
   const rowsReqIdRef = useRef(0);
   const countReqIdRef = useRef(0);
 
-  const brokerItems: BrokerItem[] = useMemo(() => {
-    if (!options?.broker) return [];
-    return Object.entries(options.broker).map(([value, label]) => ({
-      value: value as BrokerId,
-      label: String(label),
-    }));
-  }, [options]);
+  const brokerItems = useMemo(() => getBrokerItems(brokerAccounts, undefined, true), [brokerAccounts]);
+  const brokerLabels = useMemo(() => getBrokerLabels(brokerAccounts, true), [brokerAccounts]);
 
-  const brokerLabels = useMemo(() => {
-    const m: Partial<Record<BrokerId, string>> = {};
-    for (const b of brokerItems) m[b.value] = b.label;
-    return m;
-  }, [brokerItems]);
+  const defaultBrokerAccountId = useMemo(
+    () => getDefaultBrokerAccountId(brokerItems),
+    [brokerItems],
+  );
 
   const dialogInitialValues = useMemo(() => {
     if (!editing) return undefined;
@@ -96,17 +81,17 @@ export default function Trade() {
     return {
       tickerId: editing.tickerId,
       tradeType: editing.tradeType,
-      broker: editing.broker ?? DEFAULT_BROKER,
+      brokerAccountId: editing.brokerAccountId ?? defaultBrokerAccountId,
       rate: String(editing.rate ?? ''),
       quantity: String(editing.quantity ?? '1'),
       totalAmount: String(editing.totalAmount ?? ''),
       profit: editing.profit != null ? String(editing.profit) : '',
       tradeDatetimeIso: new Date(editing.tradeDatetime).toISOString(),
       brokerageFee: editing.brokerageFee != null ? String(editing.brokerageFee) : '0',
-      overrideAvgBookCost: editing.overrideAvgBookCost != null ? String(editing.overrideAvgBookCost) : '',
-      overrideQuantityHolding: editing.overrideQuantityHolding != null ? String(editing.overrideQuantityHolding) : '',
+      purpose: editing.purpose ?? '',
+      reason: editing.reason ?? '',
     };
-  }, [editing]);
+  }, [editing, defaultBrokerAccountId]);
 
   const tickerOptions: TickerOption[] = useMemo(
     () =>
@@ -115,24 +100,25 @@ export default function Trade() {
         symbol: t.symbol,
         companyName: t.companyName,
         bucket: t.bucket,
+        positionsByBrokerAccount: t.positionsByBrokerAccount, // we don't need positions here
       })),
-    [tickers]
+    [tickers],
   );
 
   const bySymbol = useMemo(() => new Map(tickerOptions.map((t) => [t.symbol, t])), [tickerOptions]);
 
   const selectedTickers = useMemo(
     () => filterSymbols.map((sym) => bySymbol.get(sym)).filter(Boolean) as TickerOption[],
-    [filterSymbols, bySymbol]
+    [filterSymbols, bySymbol],
   );
 
   const apiFilters = useMemo(
     () => ({
       symbols: filterSymbols.length ? filterSymbols : undefined,
-      tradeType: filterType || undefined,
-      broker: filterBroker || undefined,
+      tradeType: (!filterType||filterType === 'all') ? undefined : filterType,
+      brokerAccountId: (!filterBrokerAccountId ||filterBrokerAccountId === 'all') ? undefined : filterBrokerAccountId,
     }),
-    [filterSymbols, filterType, filterBroker]
+    [filterSymbols, filterType, filterBrokerAccountId],
   );
 
   const refresh = (goFirstPage: boolean) => {
@@ -151,12 +137,13 @@ export default function Trade() {
         if (cancelled) return;
 
         setTickers(
-          (t ?? []).map((x: any) => ({
+          (t ?? []).map((x) => ({
             id: x.id,
             symbol: x.symbol,
             companyName: x.companyName,
             bucket: x.bucket,
-          }))
+            positionsByBrokerAccount: x.positionsByBrokerAccount,
+          })),
         );
       } catch (e: any) {
         if (!cancelled) showSnackbar(e?.message ?? 'Failed to load tickers', { severity: 'error' });
@@ -190,7 +177,7 @@ export default function Trade() {
   // when filters change: reset to first page
   useEffect(() => {
     setPage(0);
-  }, [filterSymbols, filterType, filterBroker]);
+  }, [filterSymbols, filterType, filterBrokerAccountId]);
 
   // COUNT: only when filters change or refreshKey changes (NOT on page change)
   useEffect(() => {
@@ -209,7 +196,8 @@ export default function Trade() {
         const maxPage = Math.max(0, Math.ceil(c / rowsPerPage) - 1);
         if (page > maxPage) setPage(maxPage);
       } catch (e: any) {
-        if (!cancelled) showSnackbar(e?.message ?? 'Failed to load trades count', { severity: 'error' });
+        if (!cancelled)
+          showSnackbar(e?.message ?? 'Failed to load trades count', { severity: 'error' });
       }
     })();
 
@@ -264,7 +252,9 @@ export default function Trade() {
   }
 
   async function onDelete(t: TradeDTO) {
-    const ok = window.confirm(`Delete trade for ${t.symbol} (${t.tradeType} ${t.quantity} @ ${t.rate})?`);
+    const ok = window.confirm(
+      `Delete trade for ${t.symbol} (${t.tradeType} ${t.quantity} @ ${t.rate})?`,
+    );
     if (!ok) return;
 
     try {
@@ -318,37 +308,61 @@ export default function Trade() {
           p: 2,
           borderRadius: 2,
           mb: 2,
-          display: 'grid',
-          gridTemplateColumns: { xs: '1fr 1fr', md: '2fr 1fr 2fr' },
+          display: 'flex',
+          flexDirection: 'column',
           gap: 1.5,
         }}
       >
-        <TickerAutosuggest
-          tickers={tickerOptions}
-          value={selectedTickers}
-          onChange={(next) => setFilterSymbols(next.map((t) => t.symbol))}
-          label="Tickers"
-          placeholder="Filter trades by ticker(s)"
-        />
+        <Box sx={{ width: '100%' }}>
+          <TickerAutosuggest
+            tickers={tickerOptions}
+            value={selectedTickers}
+            onChange={(next) => setFilterSymbols(next.map((t) => t.symbol))}
+            label="Tickers"
+            placeholder="Filter trades by ticker(s)"
+          />
+        </Box>
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 2,
+          }}
+        >
+          <Box
+            sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}
+          >
 
-        <FormControl size="small">
-          <InputLabel>Type</InputLabel>
-          <Select label="Type" value={filterType} onChange={(e) => setFilterType(e.target.value as any)}>
-            <MenuItem value="">All</MenuItem>
-            <MenuItem value="buy">Buy</MenuItem>
-            <MenuItem value="sell">Sell</MenuItem>
-          </Select>
-        </FormControl>
+            <FormControl size="small" sx={{ minWidth: 200 }}>
+              <InputLabel>Type</InputLabel>
+              <Select
+                label="Type"
+                value={filterType}
+                onChange={(e) => setFilterType(e.target.value as TradeType | 'all')}
+              >
+                <MenuItem value="all">All</MenuItem>
+                <MenuItem value="buy">Buy</MenuItem>
+                <MenuItem value="sell">Sell</MenuItem>
+              </Select>
+            </FormControl>
 
-        <BrokerSelect
-          value={filterBroker}
-          onChange={setFilterBroker}
-          disabled={optionsLoading}
-          items={brokerItems}
-          includeAllOption
-          allLabel="All Brokers"
-          label="Broker"
-        />
+            <BrokerSelect
+              value={filterBrokerAccountId}
+              onChange={setFilterBrokerAccountId}
+              disabled={brokerAccountsLoading}
+              items={brokerItems}
+              includeAllOption
+              allLabel="All Brokers"
+              label="Broker"
+              sx={{ minWidth: 200 }}
+            />
+          </Box>
+          <Typography variant="body2" sx={{ opacity: 0.8, fontWeight: 500, px: 1 }}>
+            Showing {totalCount} {totalCount === 1 ? 'trade' : 'trades'}
+          </Typography>
+        </Box>
       </Box>
 
       {/* Grid "table" */}
@@ -393,8 +407,10 @@ export default function Trade() {
             <Box>{t.tradeType}</Box>
             <Box>{t.rate}</Box>
             <Box>{t.quantity}</Box>
-            <Box>{t.tradeType === 'sell' ? t.profit ?? '-' : '-'}</Box>
-            <Box>{t.broker ? brokerLabels[t.broker] ?? t.broker : '-'}</Box>
+            <Box>{t.tradeType === 'sell' ? (t.profit ?? '-') : '-'}</Box>
+            <Box>
+              {t.brokerAccountId ? (brokerLabels[t.brokerAccountId] ?? t.brokerAccountId) : '-'}
+            </Box>
             <Box>{new Date(t.tradeDatetime).toLocaleString()}</Box>
 
             <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 0.5 }}>
@@ -449,6 +465,7 @@ export default function Trade() {
         mode="full"
         tickers={tickerOptions}
         brokerItems={brokerItems}
+        defaultBrokerAccountId={defaultBrokerAccountId}
         editingTradeId={editing?.id}
         initialValues={dialogInitialValues}
       />

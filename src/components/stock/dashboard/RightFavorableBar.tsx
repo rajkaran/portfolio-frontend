@@ -1,7 +1,7 @@
 import { Box, Divider, IconButton, Typography } from '@mui/material';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 
-import type { BrokerId, TickerLatestDTO } from '../../../types/stock/ticker.types';
+import type { TickerLatestDTO } from '../../../types/stock/ticker.types';
 import type { ThresholdKey } from '../../../constants/stockUI';
 import TickerCard from './TickerCard';
 
@@ -17,10 +17,10 @@ export default function RightFavorableBar({
 }: {
   onClose: () => void;
   tickers: TickerLatestDTO[];
-  brokerLabels: Record<BrokerId, string>;
+  brokerLabels: Record<string, string>;
   onTrade: (id: string, side: 'buy' | 'sell') => void;
   onChangeThreshold: (tickerId: string, key: ThresholdKey, value: number) => void;
-  onSelectBroker: (symbol: string, broker: BrokerId) => void;
+  onSelectBroker: (symbol: string, broker: string) => void;
   silencedById: Record<string, boolean>;
   onToggleSilence: (tickerId: string) => void;
 }) {

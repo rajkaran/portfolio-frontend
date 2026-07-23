@@ -1,20 +1,19 @@
 import { loopbackApi } from './loopback-api';
 import type { CreateTradeDTO, TradeDTO, TradeType, UpdateTradeDTO } from '../../types/stock/trade.types';
-import type { BrokerId } from '../../types/stock/ticker.types';
 
-function buildWhere(params?: { symbols?: string[]; tradeType?: TradeType; broker?: BrokerId }) {
+function buildWhere(params?: { symbols?: string[]; tradeType?: TradeType; brokerAccountId?: string }) {
   const and: Array<Record<string, any>> = [];
 
   if (params?.symbols?.length) and.push({ symbol: { inq: params.symbols } });
   if (params?.tradeType) and.push({ tradeType: params.tradeType });
-  if (params?.broker) and.push({ broker: params.broker });
+  if (params?.brokerAccountId) and.push({ brokerAccountId: params.brokerAccountId });
 
   and.push({ isActive: true });
 
   return and.length ? { and } : undefined;
 }
 
-export async function countTrades(params?: { symbols?: string[]; tradeType?: TradeType; broker?: BrokerId }) {
+export async function countTrades(params?: { symbols?: string[]; tradeType?: TradeType; brokerAccountId?: string }) {
   const where = buildWhere(params);
   const res = await loopbackApi.get<{ count: number }>('/trades/count', {
     params: { where: JSON.stringify(where) },
@@ -26,7 +25,7 @@ export async function countTrades(params?: { symbols?: string[]; tradeType?: Tra
 export async function listTradesPaged(params: {
   symbols?: string[];
   tradeType?: TradeType;
-  broker?: BrokerId;
+  brokerAccountId?: string;
   limit: number;
   skip: number;
 }) {
