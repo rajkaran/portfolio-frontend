@@ -248,29 +248,20 @@ export function CreateTradeDialog(props: {
     if (form.tradeType !== 'sell') return;
     if (profitTouched) return;
     if (avgBookCost == null) return;
-
+  
     const r = Number(form.rate);
     const q = Number(form.quantity);
     const fee = Number(form.brokerageFee) || 0;
-
+  
     if (!Number.isFinite(r) || !Number.isFinite(q) || r <= 0 || q <= 0) return;
-
-    const computed = (r - avgBookCost) * q - fee;
+  
+    const computed = ((r - avgBookCost) * q) - fee;
     const next = computed.toFixed(2);
-
+  
     if (form.profit !== next) {
       setForm((p) => ({ ...p, profit: next }));
     }
-  }, [
-    open,
-    form.tradeType,
-    form.rate,
-    form.quantity,
-    form.brokerageFee,
-    form.brokerAccountId,
-    profitTouched,
-    avgBookCost,
-  ]);
+  }, [open, form.tradeType, form.rate, form.quantity, form.brokerageFee, form.brokerAccountId, profitTouched, avgBookCost]);
 
   // When closing: clear transient state (including fetched options in parent, if any)
   const handleClose = () => {

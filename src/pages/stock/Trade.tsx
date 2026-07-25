@@ -123,11 +123,8 @@ export default function Trade() {
   const apiFilters = useMemo(
     () => ({
       symbols: filterSymbols.length ? filterSymbols : undefined,
-      tradeType: !filterType || filterType === 'all' ? undefined : filterType,
-      brokerAccountId:
-        !filterBrokerAccountId || filterBrokerAccountId === 'all'
-          ? undefined
-          : filterBrokerAccountId,
+      tradeType: (!filterType||filterType === 'all') ? undefined : filterType,
+      brokerAccountId: (!filterBrokerAccountId ||filterBrokerAccountId === 'all') ? undefined : filterBrokerAccountId,
     }),
     [filterSymbols, filterType, filterBrokerAccountId],
   );
