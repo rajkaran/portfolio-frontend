@@ -2,13 +2,18 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Box,
   Button,
-  Divider,
   FormControl,
   IconButton,
   InputLabel,
   MenuItem,
   Select,
   Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
   Tooltip,
   Typography,
   TablePagination,
@@ -67,7 +72,10 @@ export default function Trade() {
   const rowsReqIdRef = useRef(0);
   const countReqIdRef = useRef(0);
 
-  const brokerItems = useMemo(() => getBrokerItems(brokerAccounts, undefined, true), [brokerAccounts]);
+  const brokerItems = useMemo(
+    () => getBrokerItems(brokerAccounts, undefined, true),
+    [brokerAccounts],
+  );
   const brokerLabels = useMemo(() => getBrokerLabels(brokerAccounts, true), [brokerAccounts]);
 
   const defaultBrokerAccountId = useMemo(
@@ -159,7 +167,7 @@ export default function Trade() {
   // websocket: if trade happens elsewhere (Dashboard quick trade), refresh page 0 automatically
   useEffect(() => {
     const ws = connectPricesWs({
-      onPriceUpdate: () => { }, // had to add this because its required in websocket class
+      onPriceUpdate: () => {}, // had to add this because its required in websocket class
       onTrade: (_m: TradeWsMsg) => {
         if (page === 0) {
           refresh(false);
@@ -331,10 +339,7 @@ export default function Trade() {
             gap: 2,
           }}
         >
-          <Box
-            sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}
-          >
-
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
             <FormControl size="small" sx={{ minWidth: 200 }}>
               <InputLabel>Type</InputLabel>
               <Select
@@ -365,78 +370,64 @@ export default function Trade() {
         </Box>
       </Box>
 
-      {/* Grid "table" */}
-      <Box sx={{ bgcolor: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden' }}>
-        <Box
-          sx={{
-            display: 'grid',
-            gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 2fr 140px',
-            gap: 1,
-            px: 2,
-            py: 1,
-            fontSize: 13,
-            opacity: 0.8,
-          }}
-        >
-          <Box>Symbol</Box>
-          <Box>Type</Box>
-          <Box>Rate</Box>
-          <Box>Qty</Box>
-          <Box>Profit</Box>
-          <Box>Broker</Box>
-          <Box>Trade Time</Box>
-          <Box />
-        </Box>
+      {/* Trades table */}
+      <TableContainer sx={{ bgcolor: 'rgba(255,255,255,0.06)', borderRadius: 2 }}>
+        <Table size="small">
+          <TableHead>
+            <TableRow>
+              <TableCell sx={{ fontSize: 13, opacity: 0.8 }}>Symbol</TableCell>
+              <TableCell sx={{ fontSize: 13, opacity: 0.8 }}>Type</TableCell>
+              <TableCell sx={{ fontSize: 13, opacity: 0.8 }}>Rate</TableCell>
+              <TableCell sx={{ fontSize: 13, opacity: 0.8 }}>Qty</TableCell>
+              <TableCell sx={{ fontSize: 13, opacity: 0.8 }}>Profit</TableCell>
+              <TableCell sx={{ fontSize: 13, opacity: 0.8 }}>Broker</TableCell>
+              <TableCell sx={{ fontSize: 13, opacity: 0.8 }}>Trade Time</TableCell>
+              <TableCell />
+            </TableRow>
+          </TableHead>
 
-        <Divider />
+          <TableBody>
+            {rows.map((t) => (
+              <TableRow key={t.id}>
+                <TableCell>{t.symbol}</TableCell>
+                <TableCell>{t.tradeType}</TableCell>
+                <TableCell>{t.rate}</TableCell>
+                <TableCell>{t.quantity}</TableCell>
+                <TableCell>{t.tradeType === 'sell' ? (t.profit ?? '-') : '-'}</TableCell>
+                <TableCell>
+                  {t.brokerAccountId
+                    ? (brokerLabels[t.brokerAccountId] ?? t.brokerAccountId)
+                    : '-'}
+                </TableCell>
+                <TableCell>{new Date(t.tradeDatetime).toLocaleString()}</TableCell>
+                <TableCell align="right">
+                  <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 0.5 }}>
+                    <Tooltip title="Edit">
+                      <IconButton size="small" onClick={() => openEdit(t)}>
+                        <EditOutlinedIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
 
-        {rows.map((t) => (
-          <Box
-            key={t.id}
-            sx={{
-              display: 'grid',
-              gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1.5fr 1.5fr 96px',
-              gap: 1,
-              px: 2,
-              py: 1,
-              alignItems: 'center',
-              borderTop: '1px solid rgba(255,255,255,0.06)',
-            }}
-          >
-            <Box sx={{ fontWeight: 500 }}>{t.symbol}</Box>
-            <Box>{t.tradeType}</Box>
-            <Box>{t.rate}</Box>
-            <Box>{t.quantity}</Box>
-            <Box>{t.tradeType === 'sell' ? (t.profit ?? '-') : '-'}</Box>
-            <Box>
-              {t.brokerAccountId ? (brokerLabels[t.brokerAccountId] ?? t.brokerAccountId) : '-'}
-            </Box>
-            <Box>{new Date(t.tradeDatetime).toLocaleString()}</Box>
-
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 0.5 }}>
-              <Tooltip title="Edit">
-                <IconButton size="small" onClick={() => openEdit(t)}>
-                  <EditOutlinedIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-
-              <Tooltip title="Delete">
-                <IconButton
-                  size="small"
-                  color="error"
-                  sx={{ '&:hover': { color: 'error.main' } }}
-                  onClick={() => onDelete(t)}
-                >
-                  <DeleteOutlineOutlinedIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-            </Box>
-          </Box>
-        ))}
+                    <Tooltip title="Delete">
+                      <IconButton
+                        size="small"
+                        color="error"
+                        sx={{ '&:hover': { color: 'error.main' } }}
+                        onClick={() => onDelete(t)}
+                      >
+                        <DeleteOutlineOutlinedIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
 
         {!loading && rows.length === 0 && <Box sx={{ p: 3, opacity: 0.8 }}>No trades found.</Box>}
         {loading && <Box sx={{ p: 3, opacity: 0.8 }}>Loading…</Box>}
-      </Box>
+      </TableContainer>
 
       <TablePagination
         component="div"
