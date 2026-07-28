@@ -8,6 +8,7 @@ export default function TickerGrid({
   brokerLabels,
   onZoom,
   onTrade,
+  onDividend,
   onChangeThreshold,
   onSelectBroker,
   silencedById,
@@ -17,6 +18,7 @@ export default function TickerGrid({
   brokerLabels: Record<string, string>;
   onZoom: (id: string, anchorEl: HTMLElement | null) => void;
   onTrade: (id: string, side: 'buy' | 'sell') => void;
+  onDividend: (id: string, specificBrokerId?: string) => void;
   onChangeThreshold: (tickerId: string, key: ThresholdKey, value: number) => void;
   onSelectBroker: (symbol: string, brokerAccountId: string) => void;
   silencedById: Record<string, boolean>;
@@ -41,6 +43,7 @@ export default function TickerGrid({
             brokerLabels={brokerLabels}
             onZoom={onZoom}
             onTrade={onTrade}
+            onDividend={onDividend}
             onChangeThreshold={onChangeThreshold}
             onSelectBroker={onSelectBroker}
             silenced={!!silencedById[t.id]}
