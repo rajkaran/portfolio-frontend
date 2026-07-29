@@ -36,10 +36,7 @@ type FormState = {
   payDatetimeIso: string;
 };
 
-function resetForm(
-  defaultBrokerAccountId: string,
-  preset?: { tickerId?: string },
-): FormState {
+function resetForm(defaultBrokerAccountId: string, preset?: { tickerId?: string }): FormState {
   return {
     symbol: '',
     tickerId: preset?.tickerId ?? '',
@@ -89,9 +86,7 @@ export function CreateDividendDialog(props: {
     }),
   );
 
-  const [payDtLocal, setPayDtLocal] = useState<string>(() =>
-    isoToLocalInput(form.payDatetimeIso),
-  );
+  const [payDtLocal, setPayDtLocal] = useState<string>(() => isoToLocalInput(form.payDatetimeIso));
 
   const tickerInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -146,20 +141,20 @@ export function CreateDividendDialog(props: {
   const submit = async () => {
     const nextErrors: Record<string, string> = {};
 
-    if (!form.tickerId) nextErrors.tickerId = '• Ticker is required';
-    if (!form.brokerAccountId?.trim()) nextErrors.brokerAccountId = '• Broker is required';
+    if (!form.tickerId) nextErrors.tickerId = 'Ticker is required';
+    if (!form.brokerAccountId?.trim()) nextErrors.brokerAccountId = 'Broker is required';
 
     const amountNum = Number(form.amount);
     if (!amountNum || !Number.isFinite(amountNum) || amountNum <= 0)
-      nextErrors.amount = '• Valid Amount is required';
+      nextErrors.amount = 'Valid Amount is required';
 
     const rateNum = form.ratePerShare.trim() ? Number(form.ratePerShare) : undefined;
     if (form.ratePerShare.trim() && (!Number.isFinite(rateNum!) || rateNum! <= 0))
-      nextErrors.ratePerShare = '• Rate must be a valid number';
+      nextErrors.ratePerShare = 'Rate must be a valid number';
 
     const qtyNum = form.quantity.trim() ? Number(form.quantity) : undefined;
     if (form.quantity.trim() && (!Number.isFinite(qtyNum!) || qtyNum! <= 0))
-      nextErrors.quantity = '• Quantity must be a valid number';
+      nextErrors.quantity = 'Quantity must be a valid number';
 
     if (Object.keys(nextErrors).length > 0) {
       setErrors(nextErrors);
