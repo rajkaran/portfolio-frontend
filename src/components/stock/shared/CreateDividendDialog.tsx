@@ -21,6 +21,9 @@ import { createDividend, updateDividend } from '../../../services/stock/dividend
 import { SingleTickerSelect } from './SingleTickerSelect';
 import { BrokerSelect } from './BrokerSelect';
 import type { DropdownItem } from '../../../utils/stock/prepareDropdownOptions';
+import { isoToLocalInput, localInputToIso, nowIso } from '../../../utils/common/datetime';
+import { extractApiErrorMessage } from '../../../utils/common/apiError';
+import { resolveTickerSymbol } from '../../../utils/stock/resolveTickerSymbol';
 
 type FormState = {
   symbol: string;
@@ -32,27 +35,6 @@ type FormState = {
   reinvested: boolean;
   payDatetimeIso: string;
 };
-
-function isoToLocalInput(iso: string): string {
-  if (!iso) return '';
-  const d = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  const yyyy = d.getFullYear();
-  const mm = pad(d.getMonth() + 1);
-  const dd = pad(d.getDate());
-  const hh = pad(d.getHours());
-  const min = pad(d.getMinutes());
-  return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
-}
-
-function localInputToIso(local: string): string {
-  const d = new Date(local);
-  return d.toISOString();
-}
-
-function nowIso() {
-  return new Date().toISOString();
-}
 
 function resetForm(
   defaultBrokerAccountId: string,
@@ -186,8 +168,7 @@ export function CreateDividendDialog(props: {
 
     setErrors({});
 
-    const symbolToSend =
-      tickers.find((t) => t.id === form.tickerId)?.symbol?.trim() || form.symbol?.trim() || '';
+    const symbolToSend = resolveTickerSymbol(tickers, form.tickerId, form.symbol);
 
     const body: CreateDividendDTO = {
       symbol: symbolToSend,
@@ -212,12 +193,7 @@ export function CreateDividendDialog(props: {
       handleClose();
     } catch (e: any) {
       console.error('Failed to save dividend', e);
-      const msg =
-        e?.response?.data?.error?.message ||
-        e?.response?.data?.message ||
-        e?.message ||
-        'Failed to save dividend. Please try again.';
-      setErrorMsg(msg);
+      setErrorMsg(extractApiErrorMessage(e, 'Failed to save dividend. Please try again.'));
     } finally {
       setSaving(false);
     }
