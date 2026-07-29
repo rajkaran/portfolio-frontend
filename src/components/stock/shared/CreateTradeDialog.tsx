@@ -25,6 +25,9 @@ import { createTrade, updateTrade } from '../../../services/stock/trade-api';
 import { SingleTickerSelect } from './SingleTickerSelect';
 import { BrokerSelect } from './BrokerSelect';
 import type { DropdownItem } from '../../../utils/stock/prepareDropdownOptions';
+import { isoToLocalInput, localInputToIso, nowIso } from '../../../utils/common/datetime';
+import { extractApiErrorMessage } from '../../../utils/common/apiError';
+import { resolveTickerSymbol } from '../../../utils/stock/resolveTickerSymbol';
 
 import { useKeyValuePairs } from '../../../hooks/stock/useKeyValuePairs';
 
@@ -42,31 +45,6 @@ type FormState = {
   purpose?: string;
   reason?: string;
 };
-
-// ----- datetime helpers -----
-// Convert ISO -> "YYYY-MM-DDTHH:mm" for <input type="datetime-local">
-function isoToLocalInput(iso: string): string {
-  if (!iso) return '';
-  const d = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  const yyyy = d.getFullYear();
-  const mm = pad(d.getMonth() + 1);
-  const dd = pad(d.getDate());
-  const hh = pad(d.getHours());
-  const min = pad(d.getMinutes());
-  return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
-}
-
-// Convert "YYYY-MM-DDTHH:mm" local time -> ISO UTC
-function localInputToIso(local: string): string {
-  // new Date("YYYY-MM-DDTHH:mm") is treated as local time by JS
-  const d = new Date(local);
-  return d.toISOString();
-}
-
-function nowIso() {
-  return new Date().toISOString();
-}
 
 function getClassFlags(selectedClass?: string) {
   return {
@@ -248,20 +226,29 @@ export function CreateTradeDialog(props: {
     if (form.tradeType !== 'sell') return;
     if (profitTouched) return;
     if (avgBookCost == null) return;
-  
+
     const r = Number(form.rate);
     const q = Number(form.quantity);
     const fee = Number(form.brokerageFee) || 0;
-  
+
     if (!Number.isFinite(r) || !Number.isFinite(q) || r <= 0 || q <= 0) return;
-  
-    const computed = ((r - avgBookCost) * q) - fee;
+
+    const computed = (r - avgBookCost) * q - fee;
     const next = computed.toFixed(2);
-  
+
     if (form.profit !== next) {
       setForm((p) => ({ ...p, profit: next }));
     }
-  }, [open, form.tradeType, form.rate, form.quantity, form.brokerageFee, form.brokerAccountId, profitTouched, avgBookCost]);
+  }, [
+    open,
+    form.tradeType,
+    form.rate,
+    form.quantity,
+    form.brokerageFee,
+    form.brokerAccountId,
+    profitTouched,
+    avgBookCost,
+  ]);
 
   // When closing: clear transient state (including fetched options in parent, if any)
   const handleClose = () => {
@@ -271,34 +258,34 @@ export function CreateTradeDialog(props: {
   const submit = async () => {
     const nextErrors: Record<string, string> = {};
     // Basic validation
-    if (!form.tickerId) nextErrors.tickerId = '• Ticker is required';
-    if (!form.brokerAccountId?.trim()) nextErrors.brokerAccountId = '• Broker is required';
+    if (!form.tickerId) nextErrors.tickerId = 'Ticker is required';
+    if (!form.brokerAccountId?.trim()) nextErrors.brokerAccountId = 'Broker is required';
 
     const rateNum = Number(form.rate);
     if (!rateNum || !Number.isFinite(rateNum) || rateNum <= 0)
-      nextErrors.rate = '• Valid Rate is required';
+      nextErrors.rate = 'Valid Rate is required';
 
     const qtyNum = Number(form.quantity);
     if (!qtyNum || !Number.isFinite(qtyNum) || qtyNum <= 0)
-      nextErrors.quantity = '• Valid Quantity is required';
+      nextErrors.quantity = 'Valid Quantity is required';
 
     const totalAmountNum = Number(form.totalAmount);
     if (!totalAmountNum || !Number.isFinite(totalAmountNum) || totalAmountNum <= 0)
-      nextErrors.totalAmount = '• Could not Calculate Total Amount';
+      nextErrors.totalAmount = 'Could not Calculate Total Amount';
 
     let profitNum: number | null = null;
     if (form.tradeType === 'sell') {
       profitNum = form.profit.trim() ? Number(form.profit) : null;
       if (!profitNum || (form.profit.trim() && !Number.isFinite(profitNum!)))
-        nextErrors.profit = '• Could not Calculate Profit';
+        nextErrors.profit = 'Could not Calculate Profit';
     }
 
     const feeNum = form.brokerageFee.trim() === '' ? 0 : Number(form.brokerageFee);
 
     const { isTrade, isDividendOrLongTerm } = getClassFlags(props.selectedClass);
-    if (isTrade && !form.purpose) nextErrors.purpose = '• Purpose is required';
-    if (isTrade && !form.reason) nextErrors.reason = '• Reason is required';
-    if (isDividendOrLongTerm && !form.purpose) nextErrors.purpose = '• Purpose is required';
+    if (isTrade && !form.purpose) nextErrors.purpose = 'Purpose is required';
+    if (isTrade && !form.reason) nextErrors.reason = 'Reason is required';
+    if (isDividendOrLongTerm && !form.purpose) nextErrors.purpose = 'Purpose is required';
 
     if (Object.keys(nextErrors).length > 0) {
       setErrors(nextErrors);
@@ -307,8 +294,7 @@ export function CreateTradeDialog(props: {
 
     setErrors({});
 
-    const symbolToSend =
-      tickers.find((t) => t.id === form.tickerId)?.symbol?.trim() || form.symbol?.trim() || '';
+    const symbolToSend = resolveTickerSymbol(tickers, form.tickerId, form.symbol);
 
     const body: CreateTradeDTO = {
       symbol: symbolToSend, // server fills this based on tickerId
@@ -340,12 +326,7 @@ export function CreateTradeDialog(props: {
       handleClose();
     } catch (e: any) {
       console.error('Failed to save trade', e);
-      const errorMsg =
-        e?.response?.data?.error?.message ||
-        e?.response?.data?.message ||
-        e?.message ||
-        'Failed to save trade. Please try again.';
-      setErrorMsg(errorMsg);
+      setErrorMsg(extractApiErrorMessage(e, 'Failed to save trade. Please try again.'));
     } finally {
       setSaving(false);
     }

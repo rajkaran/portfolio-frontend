@@ -4,6 +4,7 @@ import { Link as RouterLink, useLocation } from 'react-router-dom';
 import MenuIcon from '@mui/icons-material/Menu';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
+import StyleIcon from '@mui/icons-material/Style';
 import ListAltIcon from '@mui/icons-material/ListAlt';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import SettingsIcon from '@mui/icons-material/Settings';
@@ -17,8 +18,13 @@ type Props = {
 const NAV_ITEMS = [
   { label: 'Dashboard', to: '/stock', icon: <DashboardIcon fontSize="small" /> },
   { label: 'Trades', to: '/stock/trade', icon: <AttachMoneyIcon fontSize="small" /> },
+  { label: 'Dividends', to: '/stock/dividend', icon: <StyleIcon fontSize="small" /> },
   { label: 'Tickers', to: '/stock/ticker', icon: <ListAltIcon fontSize="small" /> },
-  { label: 'Alert Logs', to: '/stock/alert-logs', icon: <NotificationsActiveIcon fontSize="small" /> },
+  {
+    label: 'Alert Logs',
+    to: '/stock/alert-logs',
+    icon: <NotificationsActiveIcon fontSize="small" />,
+  },
   { label: 'Stock Wall', to: '/stock/chartwall', icon: <MonitorHeartRounded fontSize="small" /> },
   { label: 'Settings', to: '/stock/setting', icon: <SettingsIcon fontSize="small" /> },
 ];
@@ -116,7 +122,6 @@ export default function LeftNavBar({ collapsed, onToggleCollapse }: Props) {
           );
         })}
       </Stack>
-
     </Box>
   );
 }

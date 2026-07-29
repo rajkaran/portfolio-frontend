@@ -10,6 +10,7 @@ export default function RightFavorableBar({
   tickers,
   brokerLabels,
   onTrade,
+  onDividend,
   onChangeThreshold,
   onSelectBroker,
   silencedById,
@@ -19,6 +20,7 @@ export default function RightFavorableBar({
   tickers: TickerLatestDTO[];
   brokerLabels: Record<string, string>;
   onTrade: (id: string, side: 'buy' | 'sell') => void;
+  onDividend: (id: string, specificBrokerId?: string) => void;
   onChangeThreshold: (tickerId: string, key: ThresholdKey, value: number) => void;
   onSelectBroker: (symbol: string, broker: string) => void;
   silencedById: Record<string, boolean>;
@@ -60,6 +62,7 @@ export default function RightFavorableBar({
             onZoom={() => { }}              // unused
             showZoom={false}               // hide it
             onTrade={onTrade}
+            onDividend={onDividend}
             onChangeThreshold={onChangeThreshold}
             onSelectBroker={onSelectBroker}
             silenced={!!silencedById[t.id]}

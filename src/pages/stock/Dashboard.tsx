@@ -22,6 +22,7 @@ import { patchTickerThresholds } from '../../services/stock/ticker-api';
 import { useSnackbar } from '../../components/common/SnackbarProvider';
 import type { ThresholdKey } from '../../constants/stockUI';
 import { CreateTradeDialog } from '../../components/stock/shared/CreateTradeDialog';
+import { CreateDividendDialog } from '../../components/stock/shared/CreateDividendDialog';
 import type { TradeType, TradeWsMsg } from '../../types/stock/trade.types';
 import { derivePositionFields, pickDefaultBroker } from '../../utils/stock/DashboardUtil';
 import { compareBySort, isFavorable } from '../../utils/stock/tickerSorting';
@@ -68,6 +69,10 @@ export default function Dashboard() {
   const [tradeSide, setTradeSide] = useState<'buy' | 'sell'>('buy');
   const [tradeSpecificBrokerId, setTradeSpecificBrokerId] = useState<string | null>(null);
 
+  const [dividendOpen, setDividendOpen] = useState(false);
+  const [dividendTickerId, setDividendTickerId] = useState<string | null>(null);
+  const [dividendSpecificBrokerId, setDividendSpecificBrokerId] = useState<string | null>(null);
+
   // last seen lastPrice per symbol
   const lastPriceRef = useRef<Record<string, number>>({});
 
@@ -80,11 +85,10 @@ export default function Dashboard() {
   const stockClassRef = useRef<string>(filters.stockClass);
 
   const brokerAccountsRef = useRef(brokerAccounts);
-  useEffect(()=>{
+  useEffect(() => {
     brokerAccountsRef.current = brokerAccounts;
-  },[brokerAccounts])
+  }, [brokerAccounts]);
 
-  // TODO: add a page to record dividends.
   // TODO: create dividend tiles and notifications through emails
   // TODO: complete favorability bar
   // TODO: get the zoom tooltip on dahsboard working
@@ -106,7 +110,10 @@ export default function Dashboard() {
     [tickers],
   );
 
-  const brokerItems = useMemo(() => getBrokerItems(brokerAccounts, filters.stockClass, true), [brokerAccounts, filters.stockClass]);
+  const brokerItems = useMemo(
+    () => getBrokerItems(brokerAccounts, filters.stockClass, true),
+    [brokerAccounts, filters.stockClass],
+  );
   const brokerLabels = useMemo(() => getBrokerLabels(brokerAccounts), [brokerAccounts]);
   const marketItems = useMemo(() => getMarketItemsFromExchanges(exchanges), [exchanges]);
   const classItems = useMemo(() => getStockClassItems(keyValuePairs), [keyValuePairs]);
@@ -143,7 +150,9 @@ export default function Dashboard() {
           tradeDatetime: toIso(raw.tradeDatetime),
         };
 
-        const selected = normalized.uiSelectedBroker ?? pickDefaultBroker(normalized, brokerAccounts ?? [], filters.stockClass);
+        const selected =
+          normalized.uiSelectedBroker ??
+          pickDefaultBroker(normalized, brokerAccounts ?? [], filters.stockClass);
         const derived = derivePositionFields(normalized, selected);
 
         map.set(normalized.symbol, {
@@ -183,7 +192,9 @@ export default function Dashboard() {
           };
 
           // recompute totalReturn based on selected broker snapshot (derived fields)
-          const selected = updated.uiSelectedBroker ?? pickDefaultBroker(updated, brokerAccounts ?? [], stockClassRef.current);
+          const selected =
+            updated.uiSelectedBroker ??
+            pickDefaultBroker(updated, brokerAccounts ?? [], stockClassRef.current);
           updated.uiSelectedBroker = selected;
           Object.assign(updated, derivePositionFields(updated, selected));
 
@@ -294,15 +305,21 @@ export default function Dashboard() {
           // keep selection stable, but ensure it exists
           let selected = updated.uiSelectedBroker;
 
-          // Get the current quantity of the selected broker 
-          const currentQty = selected ? (updated.positionsByBrokerAccount?.[selected]?.quantityHolding ?? 0) : 0;
+          // Get the current quantity of the selected broker
+          const currentQty = selected
+            ? (updated.positionsByBrokerAccount?.[selected]?.quantityHolding ?? 0)
+            : 0;
 
           //If no selection exists, OR if current broker dropped to 0 units(after a sell)
-          if(!selected || currentQty <= 0) {
+          if (!selected || currentQty <= 0) {
             //Find the next available broker based on priority
 
             //if the next available broker ALSO has 0 units, clear the selection entirely
-            selected = pickDefaultBroker(updated, brokerAccountsRef.current ?? [], stockClassRef.current);
+            selected = pickDefaultBroker(
+              updated,
+              brokerAccountsRef.current ?? [],
+              stockClassRef.current,
+            );
           }
           updated.uiSelectedBroker = selected;
 
@@ -411,17 +428,32 @@ export default function Dashboard() {
     });
   }, []);
 
-  const openQuickTrade = useCallback((tickerId: string, side: 'buy' | 'sell', specificBrokerId?:string) => {
-    setTradeTickerId(tickerId);
-    setTradeSide(side);
-    setTradeSpecificBrokerId(specificBrokerId ?? null);
-    setTradeOpen(true);
-  }, []);
+  const openQuickTrade = useCallback(
+    (tickerId: string, side: 'buy' | 'sell', specificBrokerId?: string) => {
+      setTradeTickerId(tickerId);
+      setTradeSide(side);
+      setTradeSpecificBrokerId(specificBrokerId ?? null);
+      setTradeOpen(true);
+    },
+    [],
+  );
 
   const closeQuickTrade = useCallback(() => {
     setTradeOpen(false);
     setTradeTickerId(null);
     setTradeSpecificBrokerId(null);
+  }, []);
+
+  const openQuickDividend = useCallback((tickerId: string, specificBrokerId?: string) => {
+    setDividendTickerId(tickerId);
+    setDividendSpecificBrokerId(specificBrokerId ?? null);
+    setDividendOpen(true);
+  }, []);
+
+  const closeQuickDividend = useCallback(() => {
+    setDividendOpen(false);
+    setDividendTickerId(null);
+    setDividendSpecificBrokerId(null);
   }, []);
 
   const onChangeThreshold = async (tickerId: string, key: ThresholdKey, value: number) => {
@@ -469,12 +501,16 @@ export default function Dashboard() {
   return (
     <StockShell
       right={({ closeRight }) => (
-        // TODO: after fixing the position by broker, adjust the selected broker in TickerCard.
         <RightFavorableBar
           onClose={closeRight}
           tickers={favorableTickers}
           brokerLabels={brokerLabels}
-          onTrade={(tickerId:string, side: TradeType, specificBrokerId?: string) => openQuickTrade(tickerId, side, specificBrokerId)}
+          onTrade={(tickerId: string, side: TradeType, specificBrokerId?: string) =>
+            openQuickTrade(tickerId, side, specificBrokerId)
+          }
+          onDividend={(tickerId: string, specificBrokerId?: string) =>
+            openQuickDividend(tickerId, specificBrokerId)
+          }
           onChangeThreshold={onChangeThreshold}
           onSelectBroker={onSelectBroker}
           silencedById={silencedById}
@@ -483,29 +519,40 @@ export default function Dashboard() {
       )}
     >
       <CollapsibleTopBar
-  title={
-    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-      <span>Dashboard</span>
-      <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75 }}>
-        <Tooltip title={soundEnabled ? 'Sound: ON (click to mute)' : 'Sound: OFF (click to enable)'}>
-          <IconButton size="small" onClick={toggleSound} sx={{ p: 0.25 }}>
-            {soundEnabled ? <VolumeUpIcon fontSize="small" /> : <VolumeOffIcon fontSize="small" />}
-          </IconButton>
-        </Tooltip>
-        <Typography variant="body2" sx={{ opacity: 0.8 }}>
-          WS: {wsConnected ? 'connected' : 'disconnected'}
-        </Typography>
-      </Box>
-    </Box>
-  }
->
-  <FilterBar value={filters} onChange={onFiltersChange} tickers={tickers} />
-</CollapsibleTopBar>
+        title={
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span>Dashboard</span>
+            <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75 }}>
+              <Tooltip
+                title={soundEnabled ? 'Sound: ON (click to mute)' : 'Sound: OFF (click to enable)'}
+              >
+                <IconButton size="small" onClick={toggleSound} sx={{ p: 0.25 }}>
+                  {soundEnabled ? (
+                    <VolumeUpIcon fontSize="small" />
+                  ) : (
+                    <VolumeOffIcon fontSize="small" />
+                  )}
+                </IconButton>
+              </Tooltip>
+              <Typography variant="body2" sx={{ opacity: 0.8 }}>
+                WS: {wsConnected ? 'connected' : 'disconnected'}
+              </Typography>
+            </Box>
+          </Box>
+        }
+      >
+        <FilterBar value={filters} onChange={onFiltersChange} tickers={tickers} />
+      </CollapsibleTopBar>
       <TickerGrid
         tickers={visibleTickers}
         brokerLabels={brokerLabels}
         onZoom={onZoom}
-        onTrade={(tickerId: string, side: TradeType, specificBrokerId?: string) => openQuickTrade(tickerId, side, specificBrokerId)}
+        onTrade={(tickerId: string, side: TradeType, specificBrokerId?: string) =>
+          openQuickTrade(tickerId, side, specificBrokerId)
+        }
+        onDividend={(tickerId: string, specificBrokerId?: string) =>
+          openQuickDividend(tickerId, specificBrokerId)
+        }
         onChangeThreshold={onChangeThreshold}
         onSelectBroker={onSelectBroker}
         silencedById={silencedById}
@@ -529,8 +576,21 @@ export default function Dashboard() {
         presetType={tradeSide}
         selectedClass={filters.stockClass}
         defaultBrokerAccountId={
-          tradeSpecificBrokerId || 
-          (tradeTickerId? tickerMap.get(tradeTickerId)?.uiSelectedBroker : undefined)
+          tradeSpecificBrokerId ||
+          (tradeTickerId ? tickerMap.get(tradeTickerId)?.uiSelectedBroker : undefined)
+        }
+      />
+      {/* Quick dividend dialog */}
+      <CreateDividendDialog
+        open={dividendOpen}
+        onClose={closeQuickDividend}
+        mode="quick"
+        tickers={tickerOptions}
+        brokerItems={brokerItems}
+        fixedTickerId={dividendTickerId ?? undefined}
+        defaultBrokerAccountId={
+          dividendSpecificBrokerId ||
+          (dividendTickerId ? tickerMap.get(dividendTickerId)?.uiSelectedBroker : undefined)
         }
       />
     </StockShell>

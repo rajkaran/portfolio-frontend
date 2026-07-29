@@ -5,6 +5,7 @@ import GroceryList from './pages/grocery/GroceryList';
 import Setting from './pages/stock/Setting';
 import Ticker from './pages/stock/Ticker';
 import Trade from './pages/stock/Trade';
+import Dividend from './pages/stock/Dividend';
 import ChartWall from './pages/stock/ChartWall.tsx';
 
 function App() {
@@ -17,6 +18,7 @@ function App() {
         <Route path="/stock/setting" element={<Setting />} />
         <Route path="/stock/ticker" element={<Ticker />} />
         <Route path="/stock/trade" element={<Trade />} />
+        <Route path="/stock/dividend" element={<Dividend />} />
         <Route path="/stock/chartwall" element={<ChartWall />} />
 
         <Route path="/grocery" element={<GroceryList />} />

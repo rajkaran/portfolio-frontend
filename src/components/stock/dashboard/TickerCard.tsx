@@ -15,10 +15,11 @@ import {
 import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import SellIcon from '@mui/icons-material/Sell';
+import StyleIcon from '@mui/icons-material/PaidOutlined';
 import NotificationsOffIcon from '@mui/icons-material/NotificationsOff';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 
-import type {TickerLatestDTO } from '../../../types/stock/ticker.types';
+import type { TickerLatestDTO } from '../../../types/stock/ticker.types';
 import TimeAgo from '../shared/TimeAgo';
 import ThresholdMini from './ThresholdMini';
 import { THRESHOLD_COLORS } from '../../../constants/stockUI';
@@ -62,6 +63,7 @@ export default function TickerCard(props: {
   brokerLabels: Record<string, string>;
   onZoom: (id: string, anchorEl: HTMLElement | null) => void;
   onTrade: (id: string, side: 'buy' | 'sell', specificBrokerId?: string) => void;
+  onDividend: (id: string, specificBrokerId?: string) => void;
   onChangeThreshold: (tickerId: string, key: ThresholdKey, value: number) => void;
   onSelectBroker: (symbol: string, broker: string) => void;
   silenced: boolean;
@@ -73,6 +75,7 @@ export default function TickerCard(props: {
     brokerLabels,
     onZoom,
     onTrade,
+    onDividend,
     onChangeThreshold,
     onSelectBroker,
     silenced,
@@ -88,7 +91,7 @@ export default function TickerCard(props: {
   const handleMenuClick = (event: React.MouseEvent<HTMLElement>) => {
     setMenuAnchorEl(event.currentTarget);
   };
-  
+
   const handleMenuClose = () => {
     setMenuAnchorEl(null);
   };
@@ -244,51 +247,56 @@ export default function TickerCard(props: {
             {ticker.symbol}
           </Typography>
 
-
           <Stack direction="row" spacing={0.1}>
-          <Menu
-            anchorEl={menuAnchorEl}
-            open={actionMenuOpen}
-            onClose={handleMenuClose}
-            transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-            anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-          >
-            {showZoom && (
-              <MenuItem onClick={() => handleAction(() => onZoom(ticker.id, cardRef.current))}>
-                <ListItemIcon>
-                  <ZoomInIcon fontSize="small" />
-                </ListItemIcon>
-                <ListItemText>Zoom</ListItemText>
-              </MenuItem>
-            )}
-            <MenuItem onClick={() => handleAction(() => onTrade(ticker.id, 'buy', displayBroker))}>
-              <ListItemIcon>
-                <ShoppingCartIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText>Buy</ListItemText>
-            </MenuItem>
-            <MenuItem onClick={() => handleAction(() => onTrade(ticker.id, 'sell', displayBroker))}>
-              <ListItemIcon>
-                <SellIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText>Sell</ListItemText>
-            </MenuItem>
-            <MenuItem onClick={() => handleAction(() => onToggleSilence(ticker.id))}>
-              <ListItemIcon>
-                {silenced ? (
-                  <NotificationsOffIcon fontSize="small" />
-                ) : (
-                  <NotificationsActiveIcon fontSize="small" />
-                )}
-              </ListItemIcon>
-              <ListItemText>{silenced ? 'Unsilence' : 'Silence'}</ListItemText>
-            </MenuItem>
-          </Menu>
-             <IconButton
-              size="small"
-              onClick={handleMenuClick}
-              aria-label="Actions"
+            <Menu
+              anchorEl={menuAnchorEl}
+              open={actionMenuOpen}
+              onClose={handleMenuClose}
+              transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+              anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
             >
+              {showZoom && (
+                <MenuItem onClick={() => handleAction(() => onZoom(ticker.id, cardRef.current))}>
+                  <ListItemIcon>
+                    <ZoomInIcon fontSize="small" />
+                  </ListItemIcon>
+                  <ListItemText>Zoom</ListItemText>
+                </MenuItem>
+              )}
+              <MenuItem
+                onClick={() => handleAction(() => onTrade(ticker.id, 'buy', displayBroker))}
+              >
+                <ListItemIcon>
+                  <ShoppingCartIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText>Buy</ListItemText>
+              </MenuItem>
+              <MenuItem
+                onClick={() => handleAction(() => onTrade(ticker.id, 'sell', displayBroker))}
+              >
+                <ListItemIcon>
+                  <SellIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText>Sell</ListItemText>
+              </MenuItem>
+              <MenuItem onClick={() => handleAction(() => onDividend(ticker.id, displayBroker))}>
+                <ListItemIcon>
+                  <StyleIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText>Dividend</ListItemText>
+              </MenuItem>
+              <MenuItem onClick={() => handleAction(() => onToggleSilence(ticker.id))}>
+                <ListItemIcon>
+                  {silenced ? (
+                    <NotificationsOffIcon fontSize="small" />
+                  ) : (
+                    <NotificationsActiveIcon fontSize="small" />
+                  )}
+                </ListItemIcon>
+                <ListItemText>{silenced ? 'Unsilence' : 'Silence'}</ListItemText>
+              </MenuItem>
+            </Menu>
+            <IconButton size="small" onClick={handleMenuClick} aria-label="Actions">
               <MoreVertIcon fontSize="small" />
             </IconButton>
           </Stack>
