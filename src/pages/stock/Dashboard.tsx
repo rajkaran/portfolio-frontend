@@ -572,7 +572,7 @@ export default function Dashboard() {
         mode="quick"
         tickers={tickerOptions}
         brokerItems={brokerItems}
-        fixedTickerId={tradeTickerId ?? undefined}
+        selectedTickerId={tradeTickerId ?? undefined}
         presetType={tradeSide}
         selectedClass={filters.stockClass}
         defaultBrokerAccountId={
