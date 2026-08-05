@@ -59,7 +59,7 @@ export default function ChatBox() {
         body: JSON.stringify({ prompt: question, email: registeredUser?.email }),
       });
       const data: PromptHistory = await res.json();
-      console.log('Response from backend:', data, registeredUser);
+
       setMessages((prev) => [
         ...prev,
         { id: data.id, question: data.prompt, answer: data.response, userAction: data.userAction },
@@ -84,7 +84,6 @@ export default function ChatBox() {
     setItem('registeredUser', user);
 
     if (user.otpSent) {
-      console.log('open another modal to enter OTP');
       setOtpModalOpen(true);
     } else {
       // do not need to wait for OTP validation

@@ -89,7 +89,7 @@ export function CreateTradeDialog(props: {
   editingTradeId?: string; // optional if you reuse for edit
   initialValues?: Partial<FormState>; // optional for edit
 
-  onSaved?: () => void | Promise<void>;
+  onSaved?: (info: { tickerSymbol: string; brokerAccountId: string }) => void | Promise<void>;
   selectedClass?: string;
 }) {
   const {
@@ -104,8 +104,6 @@ export function CreateTradeDialog(props: {
     initialValues,
     selectedClass,
   } = props;
-
-  console.log('supplied', props);
 
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -237,7 +235,13 @@ export function CreateTradeDialog(props: {
     }
 
     return props.brokerItems.filter((item) => heldBrokerIds.has(item.value));
-  }, [form.tradeType, selectedTicker, props.brokerItems, editingTradeId, initialValues?.brokerAccountId]);
+  }, [
+    form.tradeType,
+    selectedTicker,
+    props.brokerItems,
+    editingTradeId,
+    initialValues?.brokerAccountId,
+  ]);
 
   // Keep the selected broker valid whenever the sell-only filter narrows the options
   useEffect(() => {
@@ -351,8 +355,6 @@ export function CreateTradeDialog(props: {
       ...(form.reason ? { reason: form.reason } : {}),
     };
 
-    console.log('saving the trade', body);
-
     setSaving(true);
     try {
       if (editingTradeId) {
@@ -360,8 +362,7 @@ export function CreateTradeDialog(props: {
       } else {
         await createTrade(body);
       }
-
-      await props.onSaved?.();
+      await props.onSaved?.({ tickerSymbol: symbolToSend, brokerAccountId: form.brokerAccountId });
       handleClose();
     } catch (e: any) {
       console.error('Failed to save trade', e);
