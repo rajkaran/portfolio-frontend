@@ -6,6 +6,7 @@ import DashboardIcon from '@mui/icons-material/Dashboard';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import StyleIcon from '@mui/icons-material/Style';
 import ListAltIcon from '@mui/icons-material/ListAlt';
+import PriceChangeIcon from '@mui/icons-material/PriceChange';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import SettingsIcon from '@mui/icons-material/Settings';
 import { MonitorHeartRounded } from '@mui/icons-material';
@@ -19,6 +20,7 @@ const NAV_ITEMS = [
   { label: 'Dashboard', to: '/stock', icon: <DashboardIcon fontSize="small" /> },
   { label: 'Trades', to: '/stock/trade', icon: <AttachMoneyIcon fontSize="small" /> },
   { label: 'Dividends', to: '/stock/dividend', icon: <StyleIcon fontSize="small" /> },
+  { label: 'Move Money', to: '/stock/move-money', icon: <PriceChangeIcon fontSize="small" /> },
   { label: 'Tickers', to: '/stock/ticker', icon: <ListAltIcon fontSize="small" /> },
   {
     label: 'Alert Logs',

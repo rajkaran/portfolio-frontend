@@ -22,6 +22,7 @@ import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import RefreshOutlinedIcon from '@mui/icons-material/RefreshOutlined';
 import StockShell from '../../components/stock/layout/StockShell';
+import { TABLE_ROWS_PER_PAGE_OPTIONS } from '../../constants/stockUI';
 import { useSnackbar } from '../../components/common/SnackbarProvider';
 import { listTickerLatest } from '../../services/stock/ticker-api';
 import { deleteTrade, countTrades, listTradesPaged } from '../../services/stock/trade-api';
@@ -440,7 +441,7 @@ export default function Trade() {
           setRowsPerPage(next);
           setPage(0);
         }}
-        rowsPerPageOptions={[10, 25, 50, 100]}
+        rowsPerPageOptions={TABLE_ROWS_PER_PAGE_OPTIONS}
       />
 
       <CreateTradeDialog

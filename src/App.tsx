@@ -6,6 +6,7 @@ import Setting from './pages/stock/Setting';
 import Ticker from './pages/stock/Ticker';
 import Trade from './pages/stock/Trade';
 import Dividend from './pages/stock/Dividend';
+import MoveMoney from './pages/stock/MoveMoney';
 import ChartWall from './pages/stock/ChartWall.tsx';
 
 function App() {
@@ -19,6 +20,7 @@ function App() {
         <Route path="/stock/ticker" element={<Ticker />} />
         <Route path="/stock/trade" element={<Trade />} />
         <Route path="/stock/dividend" element={<Dividend />} />
+        <Route path="/stock/move-money" element={<MoveMoney />} />
         <Route path="/stock/chartwall" element={<ChartWall />} />
 
         <Route path="/grocery" element={<GroceryList />} />
