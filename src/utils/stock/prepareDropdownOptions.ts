@@ -33,6 +33,10 @@ export function getBucketItems(keyValuePairs: KeyValueMap | undefined): Dropdown
   return getKeyValueDropdownItems(keyValuePairs, 'bucket');
 }
 
+export function getOperationItems(keyValuePairs: KeyValueMap | undefined): DropdownItem[] {
+  return getKeyValueDropdownItems(keyValuePairs, 'moveMoneyDirection');
+}
+
 export function formatBrokerAccountLabel(account: BrokerAccountDTO, fullName: Boolean): string {
   if(account.alias?.trim() && !fullName) return account.alias.trim();
   const broker = account.broker?.trim();
@@ -97,6 +101,30 @@ export function getMarketItemsFromExchanges(
   return items;
 }
 
+export function getCurrencyItemsFromExchanges(
+  exchanges: StockExchangeDTO[] | undefined,
+): DropdownItem[] {
+  if (!exchanges?.length) return [];
+
+  const seen = new Set<string>();
+  const items: DropdownItem[] = [];
+
+  for (const exchange of exchanges) {
+    const currency = exchange.currency?.trim();
+
+    if (!currency || seen.has(currency)) continue;
+
+    seen.add(currency);
+    items.push({
+      value: currency,
+      label: currency,
+    });
+  }
+
+  items.sort((a, b) => a.label.localeCompare(b.label));
+  return items;
+}
+
 export function getPreferredDropdownValue(items: DropdownItem[], preferredValue: string): string {
   const preferred = items.find((item) => item.value === preferredValue);
   return preferred?.value ?? items[0]?.value ?? '';
@@ -108,10 +136,6 @@ export function getPreferredDropdownValueByLabel(
 ): string {
   const preferred = items.find((item) => item.label === preferredLabel);
   return preferred?.value ?? items[0]?.value ?? '';
-}
-
-export function getFirstDropdownValue(items: DropdownItem[]): string {
-  return items[0]?.value ?? '';
 }
 
 export function getDefaultMarketValue(items: DropdownItem[]): string {
@@ -129,4 +153,12 @@ export function getDefaultBucketValues(items: DropdownItem[]): string[] {
 
 export function getDefaultBrokerAccountId(items: DropdownItem[]): string {
   return items[0]?.value ?? ''
+}
+
+export function getDefaultCurrencyValue(items: DropdownItem[]): string {
+  return getPreferredDropdownValue(items, 'CAD');
+}
+
+export function getDefaultOperationValue(items: DropdownItem[]): string {
+  return getPreferredDropdownValue(items, 'deposit');
 }

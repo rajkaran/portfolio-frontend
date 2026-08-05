@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Box,
   Button,
-  FormControl,
   IconButton,
   Stack,
   Table,
@@ -18,45 +17,45 @@ import {
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import RefreshOutlinedIcon from '@mui/icons-material/RefreshOutlined';
-import { TABLE_ROWS_PER_PAGE_OPTIONS } from '../../constants/stockUI';
 import StockShell from '../../components/stock/layout/StockShell';
+import { TABLE_ROWS_PER_PAGE_OPTIONS } from '../../constants/stockUI';
 import { useSnackbar } from '../../components/common/SnackbarProvider';
-import { listTickerLatest } from '../../services/stock/ticker-api';
-import {
-  deleteDividend,
-  countDividends,
-  listDividendsPaged,
-} from '../../services/stock/dividend-api';
-import type { DividendDTO } from '../../types/stock/dividend.types';
-import { CreateDividendDialog } from '../../components/stock/shared/CreateDividendDialog';
-import { TickerAutosuggest } from '../../components/stock/shared/TickerAutosuggest';
+import { deleteMoveMoney, countMoveMoney, listMoveMoneyPaged } from '../../services/stock/move-money-api';
+import type { MoveMoneyDTO } from '../../types/stock/move-money.types';
+import { CreateMoveMoneyDialog } from '../../components/stock/shared/CreateMoveMoneyDialog';
 import { BrokerSelect } from '../../components/stock/shared/BrokerSelect';
-import type { TickerOption } from '../../types/stock/ticker.types';
+import { OperationSelect } from '../../components/stock/shared/OperationSelect';
 import { useBrokerAccounts } from '../../hooks/stock/useBrokerAccounts';
+import { useStockExchanges } from '../../hooks/stock/useStockExchanges';
+import { useKeyValuePairs } from '../../hooks/stock/useKeyValuePairs';
 import {
   getBrokerItems,
   getBrokerLabels,
   getDefaultBrokerAccountId,
+  getCurrencyItemsFromExchanges,
+  getDefaultCurrencyValue,
+  getOperationItems,
+  getDefaultOperationValue,
 } from '../../utils/stock/prepareDropdownOptions';
 
-export default function Dividend() {
+export default function MoveMoney() {
   const { showSnackbar } = useSnackbar();
   const { data: brokerAccounts, loading: brokerAccountsLoading } = useBrokerAccounts(true);
+  const { data: stockExchanges } = useStockExchanges(true);
+  const { data: keyValuePairs } = useKeyValuePairs(['moveMoneyDirection']);
 
-  const [tickers, setTickers] = useState<TickerOption[]>([]);
-
-  const [rows, setRows] = useState<DividendDTO[]>([]);
+  const [rows, setRows] = useState<MoveMoneyDTO[]>([]);
   const [totalCount, setTotalCount] = useState(0);
 
   const [loading, setLoading] = useState(false);
 
   // filters
-  const [filterSymbols, setFilterSymbols] = useState<string[]>([]);
   const [filterBrokerAccountId, setFilterBrokerAccountId] = useState('all');
+  const [filterOperation, setFilterOperation] = useState<string>('all');
 
   // dialog
   const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState<DividendDTO | null>(null);
+  const [editing, setEditing] = useState<MoveMoneyDTO | null>(null);
 
   // pagination
   const [page, setPage] = useState(0);
@@ -80,48 +79,48 @@ export default function Dividend() {
     [brokerItems],
   );
 
+  const currencyItems = useMemo(
+    () => getCurrencyItemsFromExchanges(stockExchanges),
+    [stockExchanges],
+  );
+  const defaultCurrency = useMemo(() => getDefaultCurrencyValue(currencyItems), [currencyItems]);
+
+  const operationItems = useMemo(() => getOperationItems(keyValuePairs), [keyValuePairs]);
+  const defaultOperation = useMemo(
+    () => getDefaultOperationValue(operationItems),
+    [operationItems],
+  );
+
+  const operationFilterItems = useMemo(
+    () => [{ value: 'all', label: 'All Operations' }, ...operationItems],
+    [operationItems],
+  );
+
+  const operationLabels = useMemo(
+    () => Object.fromEntries(operationItems.map((o) => [o.value, o.label])),
+    [operationItems],
+  );
+
   const dialogInitialValues = useMemo(() => {
     if (!editing) return undefined;
 
     return {
-      tickerId: editing.tickerId,
-      brokerAccountId: editing.brokerAccountId,
-      ratePerShare: editing.ratePerShare != null ? String(editing.ratePerShare) : '',
-      quantity: editing.quantity != null ? String(editing.quantity) : '',
-      amount: String(editing.amount),
-      reinvested: !!editing.reinvested,
-      payDatetimeIso: new Date(editing.payDatetime).toISOString(),
+      brokerAccountId: editing.brokerAccountId ?? defaultBrokerAccountId,
+      amount: String(editing.amount ?? ''),
+      currency: editing.currency ?? defaultCurrency,
+      operation: editing.operation ?? defaultOperation,
     };
-  }, [editing, defaultBrokerAccountId]);
-
-  const tickerOptions: TickerOption[] = useMemo(
-    () =>
-      tickers.map((t) => ({
-        id: t.id,
-        symbol: t.symbol,
-        companyName: t.companyName,
-        bucket: t.bucket,
-        positionsByBrokerAccount: t.positionsByBrokerAccount,
-      })),
-    [tickers],
-  );
-
-  const bySymbol = useMemo(() => new Map(tickerOptions.map((t) => [t.symbol, t])), [tickerOptions]);
-
-  const selectedTickers = useMemo(
-    () => filterSymbols.map((sym) => bySymbol.get(sym)).filter(Boolean) as TickerOption[],
-    [filterSymbols, bySymbol],
-  );
+  }, [editing, defaultBrokerAccountId, defaultCurrency, defaultOperation]);
 
   const apiFilters = useMemo(
     () => ({
-      symbols: filterSymbols.length ? filterSymbols : undefined,
       brokerAccountId:
         !filterBrokerAccountId || filterBrokerAccountId === 'all'
           ? undefined
           : filterBrokerAccountId,
+      operation: !filterOperation || filterOperation === 'all' ? undefined : filterOperation,
     }),
-    [filterSymbols, filterBrokerAccountId],
+    [filterBrokerAccountId, filterOperation],
   );
 
   const refresh = (goFirstPage: boolean) => {
@@ -129,39 +128,10 @@ export default function Dividend() {
     setRefreshKey((k) => k + 1);
   };
 
-  // load tickers once
-  useEffect(() => {
-    let cancelled = false;
-
-    (async () => {
-      try {
-        const t = await listTickerLatest();
-        if (cancelled) return;
-
-        setTickers(
-          (t ?? []).map((x) => ({
-            id: x.id,
-            symbol: x.symbol,
-            companyName: x.companyName,
-            bucket: x.bucket,
-            positionsByBrokerAccount: x.positionsByBrokerAccount,
-          })),
-        );
-      } catch (e: any) {
-        if (!cancelled) showSnackbar(e?.message ?? 'Failed to load tickers', { severity: 'error' });
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   // when filters change: reset to first page
   useEffect(() => {
     setPage(0);
-  }, [filterSymbols, filterBrokerAccountId]);
+  }, [filterBrokerAccountId, filterOperation]);
 
   // COUNT: only when filters change or refreshKey changes (NOT on page change)
   useEffect(() => {
@@ -170,7 +140,7 @@ export default function Dividend() {
 
     (async () => {
       try {
-        const c = await countDividends(apiFilters);
+        const c = await countMoveMoney(apiFilters);
         if (cancelled) return;
         if (reqId !== countReqIdRef.current) return;
 
@@ -180,7 +150,7 @@ export default function Dividend() {
         if (page > maxPage) setPage(maxPage);
       } catch (e: any) {
         if (!cancelled)
-          showSnackbar(e?.message ?? 'Failed to load dividends count', { severity: 'error' });
+          showSnackbar(e?.message ?? 'Failed to load records count', { severity: 'error' });
       }
     })();
 
@@ -201,7 +171,7 @@ export default function Dividend() {
         const limit = rowsPerPage;
         const skip = page * rowsPerPage;
 
-        const dr = await listDividendsPaged({
+        const mr = await listMoveMoneyPaged({
           ...apiFilters,
           limit,
           skip,
@@ -210,10 +180,9 @@ export default function Dividend() {
         if (cancelled) return;
         if (reqId !== rowsReqIdRef.current) return;
 
-        setRows(dr);
+        setRows(mr);
       } catch (e: any) {
-        if (!cancelled)
-          showSnackbar(e?.message ?? 'Failed to load dividends', { severity: 'error' });
+        if (!cancelled) showSnackbar(e?.message ?? 'Failed to load records', { severity: 'error' });
       } finally {
         if (!cancelled && reqId === rowsReqIdRef.current) setLoading(false);
       }
@@ -230,18 +199,20 @@ export default function Dividend() {
     setOpen(true);
   }
 
-  function openEdit(d: DividendDTO) {
-    setEditing(d);
+  function openEdit(m: MoveMoneyDTO) {
+    setEditing(m);
     setOpen(true);
   }
 
-  async function onDelete(d: DividendDTO) {
-    const ok = window.confirm(`Delete dividend for ${d.symbol} (${d.amount})?`);
+  async function onDelete(m: MoveMoneyDTO) {
+    const ok = window.confirm(
+      `Delete this ${operationLabels[m.operation] ?? m.operation} of ${m.amount} ${m.currency}?`,
+    );
     if (!ok) return;
 
     try {
-      await deleteDividend(d.id);
-      showSnackbar('Dividend deleted', { severity: 'success' });
+      await deleteMoveMoney(m.id);
+      showSnackbar('Record deleted', { severity: 'success' });
 
       refresh(true);
     } catch (e: any) {
@@ -253,7 +224,7 @@ export default function Dividend() {
     <StockShell>
       <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
         <Typography variant="h5" sx={{ fontWeight: 500 }}>
-          Dividends
+          Move Money
         </Typography>
 
         <Box sx={{ display: 'flex', gap: 1 }}>
@@ -264,7 +235,7 @@ export default function Dividend() {
           </Tooltip>
 
           <Button variant="contained" onClick={openCreate}>
-            Add Dividend
+            Move Money
           </Button>
         </Box>
       </Stack>
@@ -277,79 +248,68 @@ export default function Dividend() {
           borderRadius: 2,
           mb: 2,
           display: 'flex',
-          flexDirection: 'column',
-          gap: 1.5,
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 2,
         }}
       >
-        <Box sx={{ width: '100%' }}>
-          <TickerAutosuggest
-            tickers={tickerOptions}
-            value={selectedTickers}
-            onChange={(next) => setFilterSymbols(next.map((t) => t.symbol))}
-            label="Tickers"
-            placeholder="Filter dividends by ticker(s)"
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+          <OperationSelect
+            value={filterOperation}
+            onChange={setFilterOperation}
+            items={operationFilterItems}
+            sx={{ minWidth: 200 }}
+          />
+
+          <BrokerSelect
+            value={filterBrokerAccountId}
+            onChange={setFilterBrokerAccountId}
+            disabled={brokerAccountsLoading}
+            items={brokerItems}
+            includeAllOption
+            allLabel="All Brokers"
+            label="Broker"
+            sx={{ minWidth: 200 }}
           />
         </Box>
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: 2,
-          }}
-        >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-            <FormControl size="small" sx={{ minWidth: 200 }}>
-              <BrokerSelect
-                value={filterBrokerAccountId}
-                onChange={setFilterBrokerAccountId}
-                disabled={brokerAccountsLoading}
-                items={brokerItems}
-                includeAllOption
-                allLabel="All Brokers"
-                label="Broker"
-              />
-            </FormControl>
-          </Box>
-          <Typography variant="body2" sx={{ opacity: 0.8, fontWeight: 500, px: 1 }}>
-            Showing {totalCount} {totalCount === 1 ? 'dividend' : 'dividends'}
-          </Typography>
-        </Box>
+        <Typography variant="body2" sx={{ opacity: 0.8, fontWeight: 500, px: 1 }}>
+          Showing {totalCount} {totalCount === 1 ? 'record' : 'records'}
+        </Typography>
       </Box>
 
-      {/* Dividends table */}
+      {/* Records table */}
       <TableContainer sx={{ bgcolor: 'rgba(255,255,255,0.06)', borderRadius: 2 }}>
         <Table size="small">
           <TableHead>
             <TableRow>
-              <TableCell sx={{ fontSize: 13, opacity: 0.8 }}>Symbol</TableCell>
-              <TableCell sx={{ fontSize: 13, opacity: 0.8 }}>Rate / Share</TableCell>
-              <TableCell sx={{ fontSize: 13, opacity: 0.8 }}>Qty</TableCell>
+              <TableCell sx={{ fontSize: 13, opacity: 0.8 }}>Operation</TableCell>
               <TableCell sx={{ fontSize: 13, opacity: 0.8 }}>Amount</TableCell>
-              <TableCell sx={{ fontSize: 13, opacity: 0.8 }}>Reinvested</TableCell>
+              <TableCell sx={{ fontSize: 13, opacity: 0.8 }}>Currency</TableCell>
               <TableCell sx={{ fontSize: 13, opacity: 0.8 }}>Broker</TableCell>
-              <TableCell sx={{ fontSize: 13, opacity: 0.8 }}>Pay Date</TableCell>
+              <TableCell sx={{ fontSize: 13, opacity: 0.8 }}>Date</TableCell>
               <TableCell />
             </TableRow>
           </TableHead>
 
           <TableBody>
-            {rows.map((d) => (
-              <TableRow key={d.id}>
-                <TableCell>{d.symbol}</TableCell>
-                <TableCell>{d.ratePerShare ?? '-'}</TableCell>
-                <TableCell>{d.quantity ?? '-'}</TableCell>
-                <TableCell>{d.amount}</TableCell>
-                <TableCell>{d.reinvested ? 'Yes' : 'No'}</TableCell>
+            {rows.map((m) => (
+              <TableRow key={m.id}>
+                <TableCell>{operationLabels[m.operation] ?? m.operation}</TableCell>
+                <TableCell>{m.amount}</TableCell>
+                <TableCell>{m.currency}</TableCell>
                 <TableCell>
-                  {d.brokerAccountId ? (brokerLabels[d.brokerAccountId] ?? d.brokerAccountId) : '-'}
+                  {m.brokerAccountId
+                    ? (brokerLabels[m.brokerAccountId] ?? m.brokerAccountId)
+                    : '-'}
                 </TableCell>
-                <TableCell>{new Date(d.payDatetime).toLocaleString()}</TableCell>
+                <TableCell>
+                  {m.createDatetime ? new Date(m.createDatetime).toLocaleString() : '-'}
+                </TableCell>
                 <TableCell align="right">
                   <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 0.5 }}>
                     <Tooltip title="Edit">
-                      <IconButton size="small" onClick={() => openEdit(d)}>
+                      <IconButton size="small" onClick={() => openEdit(m)}>
                         <EditOutlinedIcon fontSize="small" />
                       </IconButton>
                     </Tooltip>
@@ -359,7 +319,7 @@ export default function Dividend() {
                         size="small"
                         color="error"
                         sx={{ '&:hover': { color: 'error.main' } }}
-                        onClick={() => onDelete(d)}
+                        onClick={() => onDelete(m)}
                       >
                         <DeleteOutlineOutlinedIcon fontSize="small" />
                       </IconButton>
@@ -371,9 +331,7 @@ export default function Dividend() {
           </TableBody>
         </Table>
 
-        {!loading && rows.length === 0 && (
-          <Box sx={{ p: 3, opacity: 0.8 }}>No dividends found.</Box>
-        )}
+        {!loading && rows.length === 0 && <Box sx={{ p: 3, opacity: 0.8 }}>No records found.</Box>}
         {loading && <Box sx={{ p: 3, opacity: 0.8 }}>Loading…</Box>}
       </TableContainer>
 
@@ -391,7 +349,7 @@ export default function Dividend() {
         rowsPerPageOptions={TABLE_ROWS_PER_PAGE_OPTIONS}
       />
 
-      <CreateDividendDialog
+      <CreateMoveMoneyDialog
         open={open}
         onClose={() => {
           setOpen(false);
@@ -400,11 +358,13 @@ export default function Dividend() {
         onSaved={async () => {
           refresh(true);
         }}
-        mode="full"
-        tickers={tickerOptions}
         brokerItems={brokerItems}
+        currencyItems={currencyItems}
+        operationItems={operationItems}
         defaultBrokerAccountId={defaultBrokerAccountId}
-        editingDividendId={editing?.id}
+        defaultCurrency={defaultCurrency}
+        defaultOperation={defaultOperation}
+        editingMoveMoneyId={editing?.id}
         initialValues={dialogInitialValues}
       />
     </StockShell>

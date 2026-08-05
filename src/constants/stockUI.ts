@@ -1,3 +1,5 @@
+export const TABLE_ROWS_PER_PAGE_OPTIONS = [10, 25, 50, 100];
+
 export type ThresholdKey = 'thresholdGreen' | 'thresholdCyan' | 'thresholdOrange' | 'thresholdRed';
 
 export const THRESHOLD_COLORS: Record<ThresholdKey, string> = {
