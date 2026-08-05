@@ -565,14 +565,16 @@ export default function Dashboard() {
         onClose={closeZoom}
       />
       {/* Quick trade dialog */}
-      {/* TODO: after fixing the position by broker, adjust the selected broker in TickerCard. */}
       <CreateTradeDialog
         open={tradeOpen}
         onClose={closeQuickTrade}
+        onSaved={({ tickerSymbol, brokerAccountId }) =>
+          onSelectBroker(tickerSymbol, brokerAccountId)
+        }
         mode="quick"
         tickers={tickerOptions}
         brokerItems={brokerItems}
-        fixedTickerId={tradeTickerId ?? undefined}
+        selectedTickerId={tradeTickerId ?? undefined}
         presetType={tradeSide}
         selectedClass={filters.stockClass}
         defaultBrokerAccountId={

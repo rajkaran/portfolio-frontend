@@ -83,13 +83,13 @@ export function CreateTradeDialog(props: {
   brokerItems: DropdownItem[];
   defaultBrokerAccountId?: string;
 
-  fixedTickerId?: string;
+  selectedTickerId?: string;
   presetType?: 'buy' | 'sell';
 
   editingTradeId?: string; // optional if you reuse for edit
   initialValues?: Partial<FormState>; // optional for edit
 
-  onSaved?: () => void | Promise<void>;
+  onSaved?: (info: { tickerSymbol: string; brokerAccountId: string }) => void | Promise<void>;
   selectedClass?: string;
 }) {
   const {
@@ -98,7 +98,7 @@ export function CreateTradeDialog(props: {
     mode,
     tickers,
     defaultBrokerAccountId = '',
-    fixedTickerId,
+    selectedTickerId,
     presetType,
     editingTradeId,
     initialValues,
@@ -114,7 +114,7 @@ export function CreateTradeDialog(props: {
 
   const [form, setForm] = useState<FormState>(() =>
     resetForm(defaultBrokerAccountId || props.brokerItems[0]?.value || '', {
-      tickerId: fixedTickerId,
+      tickerId: selectedTickerId,
       type: presetType,
     }),
   );
@@ -124,12 +124,14 @@ export function CreateTradeDialog(props: {
     isoToLocalInput(form.tradeDatetimeIso),
   );
 
-  const selectedTicker = tickers.find((t) => t.id === form.tickerId);
-  const avgBookCost = selectedTicker?.positionsByBrokerAccount?.[form.brokerAccountId]?.avgBookCost;
-
   // refs for focus behavior
   const tickerInputRef = useRef<HTMLInputElement | null>(null);
   const rateRef = useRef<HTMLInputElement | null>(null);
+
+  const selectedTicker = useMemo(
+    () => tickers.find((t) => t.id === form.tickerId),
+    [tickers, form.tickerId],
+  );
 
   const keyValueIds = useMemo(() => ['tradePurpose', 'tradeReason'], []);
   const { data: keyValuePairs } = useKeyValuePairs(keyValueIds);
@@ -169,7 +171,7 @@ export function CreateTradeDialog(props: {
           } as FormState)
         : resetForm(
             defaultBrokerAccountId || props.brokerItems[0]?.value,
-            { tickerId: fixedTickerId, type: presetType },
+            { tickerId: selectedTickerId, type: presetType },
             selectedClass,
           );
 
@@ -191,7 +193,7 @@ export function CreateTradeDialog(props: {
     open,
     mode,
     defaultBrokerAccountId,
-    fixedTickerId,
+    selectedTickerId,
     presetType,
     editingTradeId,
     initialValues,
@@ -219,12 +221,48 @@ export function CreateTradeDialog(props: {
     }
   }, [open, form.rate, form.quantity, totalAmountTouched]);
 
+  // Sell trades can only be made from a broker that actually holds the ticker. Buy trades are unrestricted.
+  const brokerItemsForForm = useMemo(() => {
+    if (form.tradeType !== 'sell' || !selectedTicker) return props.brokerItems;
+
+    const heldBrokerIds = new Set(Object.keys(selectedTicker.positionsByBrokerAccount ?? {}));
+
+    // Editing an existing trade must never hide the broker it was originally saved
+    // against, even if that broker's position has since dropped to zero — otherwise
+    // a user who only wants to tweak the rate/qty gets stuck with an empty broker field.
+    if (editingTradeId && initialValues?.brokerAccountId) {
+      heldBrokerIds.add(initialValues.brokerAccountId);
+    }
+
+    return props.brokerItems.filter((item) => heldBrokerIds.has(item.value));
+  }, [
+    form.tradeType,
+    selectedTicker,
+    props.brokerItems,
+    editingTradeId,
+    initialValues?.brokerAccountId,
+  ]);
+
+  // Keep the selected broker valid whenever the sell-only filter narrows the options
+  useEffect(() => {
+    if (!open) return;
+    if (brokerItemsForForm.some((item) => item.value === form.brokerAccountId)) return;
+
+    setForm((p) => ({ ...p, brokerAccountId: brokerItemsForForm[0]?.value ?? '' }));
+  }, [open, brokerItemsForForm]);
+
   //Profit Calculation
   useEffect(() => {
     if (!open) return;
     if (editingTradeId) return;
     if (form.tradeType !== 'sell') return;
     if (profitTouched) return;
+
+    if (!form.brokerAccountId || !form.tickerId || !form.rate || !form.quantity) return;
+
+    // extract the avgBookCost for selected ticker and selected broker account
+    const avgBookCost =
+      selectedTicker?.positionsByBrokerAccount?.[form.brokerAccountId]?.avgBookCost;
     if (avgBookCost == null) return;
 
     const r = Number(form.rate);
@@ -246,8 +284,9 @@ export function CreateTradeDialog(props: {
     form.quantity,
     form.brokerageFee,
     form.brokerAccountId,
+    form.tickerId,
     profitTouched,
-    avgBookCost,
+    selectedTicker,
   ]);
 
   // When closing: clear transient state (including fetched options in parent, if any)
@@ -275,9 +314,13 @@ export function CreateTradeDialog(props: {
 
     let profitNum: number | null = null;
     if (form.tradeType === 'sell') {
-      profitNum = form.profit.trim() ? Number(form.profit) : null;
-      if (!profitNum || (form.profit.trim() && !Number.isFinite(profitNum!)))
+      const trimmedProfit = form.profit.trim();
+      const parsedProfit = trimmedProfit ? Number(trimmedProfit) : NaN;
+      if (!Number.isFinite(parsedProfit)) {
         nextErrors.profit = 'Could not Calculate Profit';
+      } else {
+        profitNum = parsedProfit; // 0 is a valid (break-even) profit, not an error
+      }
     }
 
     const feeNum = form.brokerageFee.trim() === '' ? 0 : Number(form.brokerageFee);
@@ -312,8 +355,6 @@ export function CreateTradeDialog(props: {
       ...(form.reason ? { reason: form.reason } : {}),
     };
 
-    console.log('saving the trade', body);
-
     setSaving(true);
     try {
       if (editingTradeId) {
@@ -321,8 +362,7 @@ export function CreateTradeDialog(props: {
       } else {
         await createTrade(body);
       }
-
-      await props.onSaved?.();
+      await props.onSaved?.({ tickerSymbol: symbolToSend, brokerAccountId: form.brokerAccountId });
       handleClose();
     } catch (e: any) {
       console.error('Failed to save trade', e);
@@ -333,7 +373,7 @@ export function CreateTradeDialog(props: {
   };
 
   // Render ticker selector:
-  const fixed = (mode === 'quick' && fixedTickerId) || !!editingTradeId;
+  const fixed = (mode === 'quick' && selectedTickerId) || !!editingTradeId;
   const tickerValue = tickers.find((t) => t.id === form.tickerId) ?? null;
 
   const tickerField = fixed ? (
@@ -427,7 +467,17 @@ export function CreateTradeDialog(props: {
     />
   );
 
-  const typeField = (
+  // Type is fixed in quick mode (dashboard decides buy/sell up front, same as the ticker),
+  // and when editing an existing trade (buy/sell shouldn't be switched after the fact).
+  const typeFixed = mode === 'quick' || !!editingTradeId;
+  const typeField = typeFixed ? (
+    <TextField
+      size="small"
+      label="Type"
+      value={form.tradeType === 'sell' ? 'Sell' : 'Buy'}
+      disabled
+    />
+  ) : (
     <FormControl size="small">
       <InputLabel>Type</InputLabel>
       <Select
@@ -454,7 +504,7 @@ export function CreateTradeDialog(props: {
         setForm((p) => ({ ...p, brokerAccountId: v }));
         setErrors((p) => ({ ...p, brokerAccountId: '' }));
       }}
-      items={props.brokerItems}
+      items={brokerItemsForForm}
       disabled={saving}
       includeAllOption={false}
       error={!!errors.brokerAccountId}
@@ -558,8 +608,8 @@ export function CreateTradeDialog(props: {
             )}
 
             {tickerField}
-            {brokerField}
             {typeField}
+            {brokerField}
             <Box sx={{ display: 'flex', gap: 1.5 }}>
               <Box sx={{ flex: 1 }}>{rateField}</Box>
               <Box sx={{ flex: 1 }}>{qtyField}</Box>

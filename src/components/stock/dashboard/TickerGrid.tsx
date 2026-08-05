@@ -24,7 +24,6 @@ export default function TickerGrid({
   silencedById: Record<string, boolean>;
   onToggleSilence: (tickerId: string) => void;
 }) {
-  console.log('Rendering TickerGrid with broker labels:', brokerLabels);
   return (
     <Box sx={{ mt: 2 }}>
       <Box
