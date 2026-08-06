@@ -6,6 +6,7 @@ import { BrokerSelect } from './BrokerSelect';
 import { CurrencySelect } from './CurrencySelect';
 import { OperationSelect } from './OperationSelect';
 import type { DropdownItem } from '../../../utils/stock/prepareDropdownOptions';
+import { isoToLocalInput, localInputToIso, nowIso } from '../../../utils/common/datetime';
 import { extractApiErrorMessage } from '../../../utils/common/apiError';
 
 type FormState = {
@@ -13,6 +14,7 @@ type FormState = {
   amount: string; // keep as string so it can be blank
   currency: string;
   operation: string;
+  transferDatetimeIso: string;
 };
 
 function resetForm(
@@ -25,6 +27,7 @@ function resetForm(
     amount: '',
     currency: defaultCurrency,
     operation: defaultOperation,
+    transferDatetimeIso: nowIso(),
   };
 }
 
@@ -64,6 +67,10 @@ export function CreateMoveMoneyDialog(props: {
     resetForm(defaultBrokerAccountId || brokerItems[0]?.value || '', defaultCurrency, defaultOperation),
   );
 
+  const [transferDtLocal, setTransferDtLocal] = useState<string>(() =>
+    isoToLocalInput(form.transferDatetimeIso),
+  );
+
   // When dialog opens: set up defaults
   useEffect(() => {
     if (!open) return;
@@ -81,6 +88,7 @@ export function CreateMoveMoneyDialog(props: {
           );
 
     setForm(next);
+    setTransferDtLocal(isoToLocalInput(next.transferDatetimeIso));
     setErrorMsg(null);
     setErrors({});
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -111,6 +119,7 @@ export function CreateMoveMoneyDialog(props: {
       amount: amountNum,
       currency: form.currency,
       operation: form.operation,
+      transferDatetime: form.transferDatetimeIso,
     };
 
     setSaving(true);
@@ -180,6 +189,24 @@ export function CreateMoveMoneyDialog(props: {
     />
   );
 
+  const transferDatetimeField = (
+    <TextField
+      size="small"
+      label="Transfer Date"
+      type="datetime-local"
+      value={transferDtLocal}
+      onChange={(e) => {
+        const nextLocal = e.target.value;
+        setTransferDtLocal(nextLocal);
+
+        if (nextLocal) {
+          setForm((p) => ({ ...p, transferDatetimeIso: localInputToIso(nextLocal) }));
+        }
+      }}
+      InputLabelProps={{ shrink: true }}
+    />
+  );
+
   return (
     <Dialog open={open} onClose={handleClose} fullWidth maxWidth="sm">
       <DialogTitle>{editingMoveMoneyId ? 'Edit Money Movement' : 'Move Money'}</DialogTitle>
@@ -206,6 +233,7 @@ export function CreateMoveMoneyDialog(props: {
               <Box sx={{ flex: 1 }}>{amountField}</Box>
               <Box sx={{ flex: 1 }}>{currencyField}</Box>
             </Box>
+            {transferDatetimeField}
           </Box>
         </DialogContent>
 

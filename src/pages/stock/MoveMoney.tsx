@@ -20,7 +20,11 @@ import RefreshOutlinedIcon from '@mui/icons-material/RefreshOutlined';
 import StockShell from '../../components/stock/layout/StockShell';
 import { TABLE_ROWS_PER_PAGE_OPTIONS } from '../../constants/stockUI';
 import { useSnackbar } from '../../components/common/SnackbarProvider';
-import { deleteMoveMoney, countMoveMoney, listMoveMoneyPaged } from '../../services/stock/move-money-api';
+import {
+  deleteMoveMoney,
+  countMoveMoney,
+  listMoveMoneyPaged,
+} from '../../services/stock/move-money-api';
 import type { MoveMoneyDTO } from '../../types/stock/move-money.types';
 import { CreateMoveMoneyDialog } from '../../components/stock/shared/CreateMoveMoneyDialog';
 import { BrokerSelect } from '../../components/stock/shared/BrokerSelect';
@@ -109,6 +113,7 @@ export default function MoveMoney() {
       amount: String(editing.amount ?? ''),
       currency: editing.currency ?? defaultCurrency,
       operation: editing.operation ?? defaultOperation,
+      transferDatetimeIso: new Date(editing.transferDatetime).toISOString(),
     };
   }, [editing, defaultBrokerAccountId, defaultCurrency, defaultOperation]);
 
@@ -287,7 +292,7 @@ export default function MoveMoney() {
               <TableCell sx={{ fontSize: 13, opacity: 0.8 }}>Amount</TableCell>
               <TableCell sx={{ fontSize: 13, opacity: 0.8 }}>Currency</TableCell>
               <TableCell sx={{ fontSize: 13, opacity: 0.8 }}>Broker</TableCell>
-              <TableCell sx={{ fontSize: 13, opacity: 0.8 }}>Date</TableCell>
+              <TableCell sx={{ fontSize: 13, opacity: 0.8 }}>Transfer Date</TableCell>
               <TableCell />
             </TableRow>
           </TableHead>
@@ -299,13 +304,9 @@ export default function MoveMoney() {
                 <TableCell>{m.amount}</TableCell>
                 <TableCell>{m.currency}</TableCell>
                 <TableCell>
-                  {m.brokerAccountId
-                    ? (brokerLabels[m.brokerAccountId] ?? m.brokerAccountId)
-                    : '-'}
+                  {m.brokerAccountId ? (brokerLabels[m.brokerAccountId] ?? m.brokerAccountId) : '-'}
                 </TableCell>
-                <TableCell>
-                  {m.createDatetime ? new Date(m.createDatetime).toLocaleString() : '-'}
-                </TableCell>
+                <TableCell>{new Date(m.transferDatetime).toLocaleString()}</TableCell>
                 <TableCell align="right">
                   <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 0.5 }}>
                     <Tooltip title="Edit">

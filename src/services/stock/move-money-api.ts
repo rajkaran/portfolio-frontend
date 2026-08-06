@@ -16,10 +16,7 @@ function buildWhere(params?: { brokerAccountId?: string; operation?: string }) {
   return and.length ? { and } : undefined;
 }
 
-export async function countMoveMoney(params?: {
-  brokerAccountId?: string;
-  operation?: string;
-}) {
+export async function countMoveMoney(params?: { brokerAccountId?: string; operation?: string }) {
   const where = buildWhere(params);
   const res = await loopbackApi.get<{ count: number }>('/move-money/count', {
     params: { where: JSON.stringify(where) },
@@ -37,7 +34,7 @@ export async function listMoveMoneyPaged(params: {
 
   const filter = {
     where,
-    order: ['createDatetime DESC'],
+    order: ['transferDatetime DESC'],
     limit: params.limit,
     skip: params.skip,
   };
