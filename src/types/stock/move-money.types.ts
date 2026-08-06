@@ -9,6 +9,8 @@ export type MoveMoneyDTO = {
   currency: string;
   operation: string;
 
+  transferDatetime: string; // ISO — when the transfer happened
+
   lastUpdateDatetime?: string; // ISO
   isActive?: boolean;
   createDatetime?: string; // ISO
